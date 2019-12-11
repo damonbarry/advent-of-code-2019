@@ -27,6 +27,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn can_calculate_fuel_for_module_mass_without_fuel_mass() {
+        let input = std::fs::read_to_string("src/input.txt").unwrap();
+        let masses = input.lines().map(|l| l.parse().unwrap());
+        let result = sum_fuel(masses, false);
+        assert_eq!(3347838, result);
+    }
+
+    #[test]
     fn module_with_mass_14_requires_2_fuel() {
         let result = sum_fuel([14].iter().cloned(), true);
         assert_eq!(2, result);
