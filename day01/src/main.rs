@@ -31,4 +31,16 @@ mod tests {
         let result = sum_fuel([14].iter().cloned(), true);
         assert_eq!(2, result);
     }
+
+    #[test]
+    fn module_with_mass_1969_requires_966_fuel() {
+        let result = sum_fuel([1969].iter().cloned(), true);
+        assert_eq!(966, result);
+    }
+
+    #[test]
+    fn module_with_mass_100756_requires_966_fuel() {
+        let result = sum_fuel([100756].iter().cloned(), true);
+        assert_eq!(50346, result);
+    }
 }
