@@ -21,3 +21,14 @@ fn main() {
     let result = sum_fuel(masses, true);
     println!("{}", result);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn module_with_mass_14_requires_2_fuel() {
+        let result = sum_fuel([14].iter().cloned(), true);
+        assert_eq!(2, result);
+    }
+}
