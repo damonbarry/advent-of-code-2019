@@ -4,18 +4,18 @@ enum Operation {
     Invalid,
 }
 
-pub struct Error {}
+pub struct Error {
+    pub position: usize,
+}
 
 pub struct Program {
     pub state: Vec<i64>,
-    pos: usize,
 }
 
 impl Program {
     pub fn new(init: Vec<i64>) -> Program {
         Program {
             state: init,
-            pos: 0,
         }
     }
 
@@ -24,8 +24,10 @@ impl Program {
             return Ok(());
         }
 
+        let mut pos: usize = 0;
+
         loop {
-            let op = self.next_op();
+            let op = self.next_op(&mut pos);
             match op {
                 Operation::Halt => {
                     return Ok(());
@@ -34,24 +36,24 @@ impl Program {
                     self.state[out] = self.state[in1] + self.state[in2];
                 },
                 Operation::Invalid => {
-                    return Err(Error {});
+                    return Err(Error { position: pos });
                 },
             };
         }
     }
 
-    fn next_op(&mut self) -> Operation {
-        match self.state[self.pos] {
+    fn next_op(&mut self, pos: &mut usize) -> Operation {
+        match self.state[*pos] {
             1 => {
-                self.pos += 4;
+                *pos += 4;
                 Operation::Addition {
-                    in1: self.state[self.pos - 3] as usize,
-                    in2: self.state[self.pos - 2] as usize,
-                    out: self.state[self.pos - 1] as usize,
+                    in1: self.state[*pos - 3] as usize,
+                    in2: self.state[*pos - 2] as usize,
+                    out: self.state[*pos - 1] as usize,
                 }
             },
             99 => {
-                self.pos = 0;
+                *pos = 0;
                 Operation::Halt
             },
             _ => Operation::Invalid,
@@ -91,6 +93,15 @@ mod tests {
     }
 
     #[test]
+    fn program_remembers_position_of_invalid_opcode() {
+        let instructions = [1, 5, 6, 7, 12345, 3, 7, 0].to_vec();
+        let mut program = Program::new(instructions);
+        let result = program.run();
+        assert!(result.is_err());
+        assert_eq!(4, result.unwrap_err().position);
+    }
+
+    #[test]
     fn understands_halt() {
         let instructions = [99];
         let mut program = Program::new(instructions.to_vec());
@@ -106,23 +117,5 @@ mod tests {
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &program.state[..]);
-    }
-
-    #[test]
-    fn program_remembers_position_of_invalid_opcode() {
-        let instructions = [1, 5, 6, 7, 12345, 3, 7, 0].to_vec();
-        let mut program = Program::new(instructions);
-        let result = program.run();
-        assert!(result.is_err());
-        assert_eq!(4, program.pos);
-    }
-
-    #[test]
-    fn program_resets_position_when_run_succeeds() {
-        let instructions = [1, 5, 6, 7, 99, 10, 20, 0].to_vec();
-        let mut program = Program::new(instructions);
-        let result = program.run();
-        assert!(result.is_ok());
-        assert_eq!(0, program.pos);
     }
 }
