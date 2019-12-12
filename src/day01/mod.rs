@@ -1,7 +1,7 @@
 use num;
 use std;
 
-fn sum_fuel(masses: impl Iterator<Item = i64>, include_fuel_mass: bool) -> i64 {
+pub fn sum_fuel(masses: impl Iterator<Item = i64>, include_fuel_mass: bool) -> i64 {
     masses.map(|m| calculate_fuel(m, include_fuel_mass)).sum()
 }
 
@@ -15,20 +15,22 @@ fn calculate_fuel(mass: i64, include_fuel_mass: bool) -> i64 {
     }
 }
 
-fn main() {
-    let input = std::fs::read_to_string("day01/src/input.txt").unwrap();
-    let masses = input.lines().map(|l| l.parse().unwrap());
-    let result = sum_fuel(masses, true);
-    println!("{}", result);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn can_calculate_fuel_for_module_mass_including_fuel_mass() {
+        println!("CURRENT: {}", std::env::current_dir().unwrap().display());
+        let input = std::fs::read_to_string("src/day01/input.txt").unwrap();
+        let masses = input.lines().map(|l| l.parse().unwrap());
+        let result = sum_fuel(masses, true);
+        assert_eq!(5018888, result);
+    }
+
+    #[test]
     fn can_calculate_fuel_for_module_mass_without_fuel_mass() {
-        let input = std::fs::read_to_string("src/input.txt").unwrap();
+        let input = std::fs::read_to_string("src/day01/input.txt").unwrap();
         let masses = input.lines().map(|l| l.parse().unwrap());
         let result = sum_fuel(masses, false);
         assert_eq!(3347838, result);
