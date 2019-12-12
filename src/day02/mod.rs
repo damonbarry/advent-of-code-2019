@@ -76,35 +76,35 @@ mod tests {
     #[test]
     fn runs_an_empty_program() {
         let instructions = [];
-        let mut computer = Program::new(instructions.to_vec());
-        let result = computer.run();
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&instructions[..], &computer.state[..]);
+        assert_eq!(&instructions[..], &program.state[..]);
     }
 
     #[test]
     fn fails_to_run_an_invalid_program() {
         let instructions = [7777].to_vec();
-        let mut computer = Program::new(instructions);
-        let result = computer.run();
+        let mut program = Program::new(instructions);
+        let result = program.run();
         assert!(result.is_err());
     }
 
     #[test]
     fn understands_halt() {
         let instructions = [99];
-        let mut computer = Program::new(instructions.to_vec());
-        let result = computer.run();
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&instructions[..], &computer.state[..]);
+        assert_eq!(&instructions[..], &program.state[..]);
     }
 
     #[test]
     fn understands_add() {
         let instructions = [1, 5, 6, 7, 99, 3, 7, 0].to_vec();
-        let mut computer = Program::new(instructions);
-        let result = computer.run();
+        let mut program = Program::new(instructions);
+        let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &computer.state[..]);
+        assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &program.state[..]);
     }
 }
