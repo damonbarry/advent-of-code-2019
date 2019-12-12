@@ -19,6 +19,9 @@ impl IntcodeComputer {
 
     pub fn run(&mut self, program: impl Iterator<Item = i64>) {
         self.state = program.collect();
+        if self.state.is_empty() {
+            return;
+        }
 
         let mut halt = false;
 
@@ -65,6 +68,14 @@ mod tests {
             .map(|i| i.parse::<i64>().unwrap())
             .collect();
         assert_eq!(1, program[0]);
+    }
+
+    #[test]
+    fn computer_runs_empty_program() {
+        let program = [];
+        let mut computer = IntcodeComputer::new();
+        computer.run(program.iter().cloned());
+        assert_eq!(&program[..], &computer.state[..]);
     }
 
     #[test]
