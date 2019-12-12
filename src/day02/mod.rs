@@ -91,15 +91,6 @@ mod tests {
     }
 
     #[test]
-    fn program_remembers_position_of_invalid_opcode() {
-        let instructions = [1, 5, 6, 7, 12345, 3, 7, 0].to_vec();
-        let mut program = Program::new(instructions);
-        let result = program.run();
-        assert!(result.is_err());
-        assert_eq!(4, program.pos);
-    }
-
-    #[test]
     fn understands_halt() {
         let instructions = [99];
         let mut program = Program::new(instructions.to_vec());
@@ -115,5 +106,23 @@ mod tests {
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &program.state[..]);
+    }
+
+    #[test]
+    fn program_remembers_position_of_invalid_opcode() {
+        let instructions = [1, 5, 6, 7, 12345, 3, 7, 0].to_vec();
+        let mut program = Program::new(instructions);
+        let result = program.run();
+        assert!(result.is_err());
+        assert_eq!(4, program.pos);
+    }
+
+    #[test]
+    fn program_resets_position_when_run_succeeds() {
+        let instructions = [1, 5, 6, 7, 99, 10, 20, 0].to_vec();
+        let mut program = Program::new(instructions);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(0, program.pos);
     }
 }
