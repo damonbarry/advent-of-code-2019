@@ -91,6 +91,15 @@ mod tests {
     }
 
     #[test]
+    fn program_remembers_position_of_invalid_opcode() {
+        let instructions = [1, 5, 6, 7, 12345, 3, 7, 0].to_vec();
+        let mut program = Program::new(instructions);
+        let result = program.run();
+        assert!(result.is_err());
+        assert_eq!(4, program.pos);
+    }
+
+    #[test]
     fn understands_halt() {
         let instructions = [99];
         let mut program = Program::new(instructions.to_vec());
