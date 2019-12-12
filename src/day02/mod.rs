@@ -4,35 +4,38 @@ enum Operation {
     Invalid,
 }
 
-pub struct IntcodeComputer {
+pub struct Error {}
+
+pub struct Program {
     pub state: Vec<i64>,
     pos: usize,
 }
 
-impl IntcodeComputer {
-    pub fn new() -> IntcodeComputer {
-        IntcodeComputer {
-            state: Vec::new(),
+impl Program {
+    pub fn new(init: Vec<i64>) -> Program {
+        Program {
+            state: init,
             pos: 0,
         }
     }
 
-    pub fn run(&mut self, program: impl Iterator<Item = i64>) {
-        self.state = program.collect();
+    pub fn run(&mut self) -> Result<(), Error> {
         if self.state.is_empty() {
-            return;
+            return Ok(());
         }
 
-        let mut halt = false;
-
-        while !halt {
+        loop {
             let op = self.next_op();
             match op {
-                Operation::Halt => halt = true,
+                Operation::Halt => {
+                    return Ok(());
+                },
                 Operation::Addition { in1, in2, out } => {
                     self.state[out] = self.state[in1] + self.state[in2];
                 },
-                Operation::Invalid => {},
+                Operation::Invalid => {
+                    return Err(Error {});
+                },
             };
         }
     }
@@ -71,26 +74,37 @@ mod tests {
     }
 
     #[test]
-    fn computer_runs_empty_program() {
-        let program = [];
-        let mut computer = IntcodeComputer::new();
-        computer.run(program.iter().cloned());
-        assert_eq!(&program[..], &computer.state[..]);
+    fn runs_an_empty_program() {
+        let instructions = [];
+        let mut computer = Program::new(instructions.to_vec());
+        let result = computer.run();
+        assert!(result.is_ok());
+        assert_eq!(&instructions[..], &computer.state[..]);
     }
 
     #[test]
-    fn computer_understands_halt() {
-        let program = [99];
-        let mut computer = IntcodeComputer::new();
-        computer.run(program.iter().cloned());
-        assert_eq!(&program[..], &computer.state[..]);
+    fn fails_to_run_an_invalid_program() {
+        let instructions = [7777].to_vec();
+        let mut computer = Program::new(instructions);
+        let result = computer.run();
+        assert!(result.is_err());
     }
 
     #[test]
-    fn computer_understands_add() {
-        let program = [1, 5, 6, 7, 99, 3, 7, 0];
-        let mut computer = IntcodeComputer::new();
-        computer.run(program.iter().cloned());
+    fn understands_halt() {
+        let instructions = [99];
+        let mut computer = Program::new(instructions.to_vec());
+        let result = computer.run();
+        assert!(result.is_ok());
+        assert_eq!(&instructions[..], &computer.state[..]);
+    }
+
+    #[test]
+    fn understands_add() {
+        let instructions = [1, 5, 6, 7, 99, 3, 7, 0].to_vec();
+        let mut computer = Program::new(instructions);
+        let result = computer.run();
+        assert!(result.is_ok());
         assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &computer.state[..]);
     }
 }
