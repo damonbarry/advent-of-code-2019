@@ -21,7 +21,6 @@ mod tests {
 
     #[test]
     fn can_calculate_fuel_for_module_mass_including_fuel_mass() {
-        println!("CURRENT: {}", std::env::current_dir().unwrap().display());
         let input = std::fs::read_to_string("src/day01/input.txt").unwrap();
         let masses = input.lines().map(|l| l.parse().unwrap());
         let result = sum_fuel(masses, true);
