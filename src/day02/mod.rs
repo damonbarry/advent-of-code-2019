@@ -76,7 +76,7 @@ impl Program {
                     Ok(match n {
                         1 => Operation::Addition { in1, in2, out },
                         2 => Operation::Mulitplication { in1, in2, out },
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     })
                 } else {
                     Err(Error {
@@ -242,9 +242,11 @@ mod tests {
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[3500, 9, 10, 70, 2, 3, 11, 0, 99, 30, 40, 50], &program.state[..]);
+        assert_eq!(
+            &[3500, 9, 10, 70, 2, 3, 11, 0, 99, 30, 40, 50],
+            &program.state[..]
+        );
     }
-
 
     #[test]
     fn runs_second_example_program() {
