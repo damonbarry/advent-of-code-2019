@@ -102,16 +102,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_read_first_opcode() {
-        let input = std::fs::read_to_string("src/day02/input.txt").unwrap();
-        let program: Vec<i64> = input
-            .split(',')
-            .map(|i| i.parse::<i64>().unwrap())
-            .collect();
-        assert_eq!(1, program[0]);
-    }
-
-    #[test]
     fn runs_an_empty_program() {
         let instructions = [];
         let mut program = Program::new(instructions.to_vec());
@@ -290,5 +280,22 @@ mod tests {
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[30, 1, 1, 4, 2, 5, 6, 0, 99], &program.state[..]);
+    }
+
+    #[test]
+    fn solve_day2_part1() {
+        let input = std::fs::read_to_string("src/day02/input.txt").unwrap();
+        let mut instructions: Vec<i64> = input
+            .split(',')
+            .map(|i| i.parse::<i64>().unwrap())
+            .collect();
+
+        instructions[1] = 12;
+        instructions[2] = 2;
+
+        let mut program = Program::new(instructions);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(8017076, program.state[0]);
     }
 }
