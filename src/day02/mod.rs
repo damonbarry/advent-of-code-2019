@@ -1,7 +1,6 @@
 enum Operation {
     Addition { in1: usize, in2: usize, out: usize },
     Halt,
-    Invalid,
 }
 
 pub struct Error {
@@ -12,6 +11,7 @@ pub struct Error {
 #[derive(Debug, PartialEq)]
 pub enum ErrorKind {
     InvalidOpcode,
+    NotEnoughArguments,
     PositionOutOfRange,
 }
 
@@ -32,14 +32,26 @@ impl Program {
         let mut pos: usize = 0;
 
         loop {
-            let op = self.next_op(&mut pos);
-            match op {
-                Operation::Halt => {
+            match self.next_op(&mut pos) {
+                Ok(Operation::Halt) => {
                     return Ok(());
                 }
-                Operation::Addition { in1, in2, out } => {
-                    let check_range = |i, p| {
-                        if (0..self.state.len()).contains(&i) {
+                Ok(Operation::Addition { in1, in2, out }) => {
+                    self.state[out] = self.state[in1] + self.state[in2];
+                }
+                Err(err) => return Err(err),
+            };
+        }
+    }
+
+    fn next_op(&mut self, pos: &mut usize) -> Result<Operation, Error> {
+        match self.state[*pos] {
+            1 => {
+                *pos += 4;
+                let range = 0..self.state.len();
+                if range.contains(pos) {
+                    let check_range = |p| {
+                        if range.contains(&(self.state[p] as usize)) {
                             Ok(())
                         } else {
                             Err(Error {
@@ -49,45 +61,30 @@ impl Program {
                         }
                     };
 
-                    if let Err(result) = check_range(in1, pos - 3) {
-                        return Err(result);
-                    }
+                    check_range(*pos - 3)?;
+                    check_range(*pos - 2)?;
+                    check_range(*pos - 1)?;
 
-                    if let Err(result) = check_range(in2, pos - 2) {
-                        return Err(result);
-                    }
-
-                    if let Err(result) = check_range(out, pos - 1) {
-                        return Err(result);
-                    }
-
-                    self.state[out] = self.state[in1] + self.state[in2];
-                }
-                Operation::Invalid => {
-                    return Err(Error {
-                        kind: ErrorKind::InvalidOpcode,
-                        position: pos,
-                    });
-                }
-            };
-        }
-    }
-
-    fn next_op(&mut self, pos: &mut usize) -> Operation {
-        match self.state[*pos] {
-            1 => {
-                *pos += 4;
-                Operation::Addition {
-                    in1: self.state[*pos - 3] as usize,
-                    in2: self.state[*pos - 2] as usize,
-                    out: self.state[*pos - 1] as usize,
+                    Ok(Operation::Addition {
+                        in1: self.state[*pos - 3] as usize,
+                        in2: self.state[*pos - 2] as usize,
+                        out: self.state[*pos - 1] as usize,
+                    })
+                } else {
+                    Err(Error {
+                        kind: ErrorKind::NotEnoughArguments,
+                        position: self.state.len() - 1,
+                    })
                 }
             }
             99 => {
                 *pos = 0;
-                Operation::Halt
+                Ok(Operation::Halt)
             }
-            _ => Operation::Invalid,
+            _ => Err(Error {
+                kind: ErrorKind::InvalidOpcode,
+                position: *pos,
+            }),
         }
     }
 }
@@ -166,6 +163,17 @@ mod tests {
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
         assert_eq!(3, err.position);
+    }
+
+    #[test]
+    fn fails_add_when_there_are_not_enough_arguments() {
+        let instructions = [1, 5, 6];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
+        assert_eq!(2, err.position);
     }
 
     #[test]
