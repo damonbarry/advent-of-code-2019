@@ -1,4 +1,7 @@
+use std::cmp::Ordering;
 use std::collections::BTreeSet;
+use std::fmt;
+use std::hash::{Hash, Hasher};
 
 #[derive(PartialEq)]
 pub enum DistanceFunction {
@@ -17,7 +20,7 @@ pub enum Direction {
 #[derive(Copy, Clone, Debug)]
 pub struct Segment {
     pub direction: Direction,
-    pub distance: i32,
+    pub length: i32,
 }
 
 impl Segment {
@@ -30,51 +33,95 @@ impl Segment {
             _ => unimplemented!(),
         };
 
-        let distance = description[1..].parse::<i32>().unwrap();
+        let length = description[1..].parse::<i32>().unwrap();
 
-        Segment {
-            direction,
-            distance,
-        }
+        Segment { direction, length }
     }
 
-    pub fn to_points(&self, origin: Point) -> (Point, BTreeSet<Point>) {
+    pub fn to_points(self, origin: Point) -> (Point, BTreeSet<Point>) {
         let mut points = BTreeSet::new();
-        for i in 1..self.distance + 1 {
+        for i in 1..=self.length {
             points.insert(Segment::point_at(
                 origin,
                 Segment {
                     direction: self.direction,
-                    distance: i,
+                    length: i,
                 },
             ));
         }
 
-        assert_eq!(self.distance as usize, points.len());
-        (Segment::point_at(origin, *self), points)
+        assert_eq!(self.length as usize, points.len());
+        (Segment::point_at(origin, self), points)
     }
 
     fn point_at(origin: Point, segment: Segment) -> Point {
-        let distance = segment.distance;
+        let length = segment.length;
+        let distance = origin.distance + length as i64;
         match segment.direction {
-            Direction::Right => Point::new(origin.x + distance, origin.y),
-            Direction::Left => Point::new(origin.x - distance, origin.y),
-            Direction::Up => Point::new(origin.x, origin.y + distance),
-            Direction::Down => Point::new(origin.x, origin.y - distance),
+            Direction::Right => {
+                Point::new(origin.x.checked_add(length).unwrap(), origin.y, distance)
+            }
+            Direction::Left => {
+                Point::new(origin.x.checked_sub(length).unwrap(), origin.y, distance)
+            }
+            Direction::Up => Point::new(origin.x, origin.y.checked_add(length).unwrap(), distance),
+            Direction::Down => {
+                Point::new(origin.x, origin.y.checked_sub(length).unwrap(), distance)
+            }
         }
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
+    pub distance: i64,
 }
 
 impl Point {
-    pub fn new(x: i32, y: i32) -> Point {
-        Point { x, y }
+    pub fn new(x: i32, y: i32, distance: i64) -> Point {
+        Point { x, y, distance }
     }
+
+    pub fn manhattan_distance(&self) -> i64 {
+        self.x.abs() as i64 + self.y.abs() as i64
+    }
+}
+
+impl fmt::Debug for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Point {{ x: {}, y: {}, distance: {}, manhattan_distance {} }}",
+            self.x,
+            self.y,
+            self.distance,
+            self.manhattan_distance()
+        )
+    }
+}
+
+// implement equality, hashing, ordering in terms of x and y only, not distance
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool { self.x == other.x && self.y == other.y }
+}
+
+impl Eq for Point {}
+
+impl Hash for Point {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.x.hash(h);
+        self.y.hash(h);
+    }
+}
+
+impl PartialOrd for Point {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(&other)) }
+}
+
+impl Ord for Point {
+    fn cmp(&self, other: &Self) -> Ordering { self.x.cmp(&other.x).then(self.y.cmp(&other.y)) }
 }
 
 #[derive(Debug)]
@@ -88,7 +135,7 @@ pub enum ErrorKind {
 }
 
 fn to_points(path: impl Iterator<Item = Segment>) -> BTreeSet<Point> {
-    let mut origin = Point::new(0, 0);
+    let mut origin = Point::new(0, 0, 0);
     path.map(|segment| {
         let (o, points) = segment.to_points(origin);
         origin = o;
@@ -102,7 +149,7 @@ pub fn find_nearest_intersection(
     path1: impl Iterator<Item = Segment>,
     path2: impl Iterator<Item = Segment>,
     distance_function: DistanceFunction,
-) -> Result<i64, Error> {
+) -> Result<Point, Error> {
     if distance_function != DistanceFunction::Manhattan {
         unimplemented!()
     }
@@ -111,22 +158,18 @@ pub fn find_nearest_intersection(
     let path2 = to_points(path2);
 
     let intersection: Vec<_> = path1.intersection(&path2).cloned().collect();
-    let mut manhattan_distance = i64::max_value();
 
-    if intersection.is_empty() {
-        return Err(Error {
-            kind: ErrorKind::NoIntersection,
-        });
-    }
+    let mut result: Option<Point> = None;
 
     for point in intersection {
-        let distance: i64 = point.x.abs() as i64 + point.y.abs() as i64;
-        if distance < manhattan_distance {
-            manhattan_distance = distance;
+        if result.is_none() || point.manhattan_distance() < result.unwrap().manhattan_distance() {
+            result = Some(point);
         }
     }
 
-    Ok(manhattan_distance)
+    result.ok_or(Error {
+        kind: ErrorKind::NoIntersection,
+    })
 }
 
 #[cfg(test)]
@@ -138,10 +181,9 @@ mod tests {
         let path1 = ["R8", "U5", "L5", "D3"].iter().cloned().map(Segment::new);
         let path2 = ["U7", "R6", "D4", "L4"].iter().cloned().map(Segment::new);
 
-        let manhattan_distance =
-            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(6, manhattan_distance);
+        assert_eq!(6, point.manhattan_distance());
     }
 
     #[test]
@@ -152,24 +194,26 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let manhattan_distance =
-            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(159, manhattan_distance);
+        assert_eq!(159, point.manhattan_distance());
     }
 
     #[test]
     fn test_day3_part1_example_3() {
-        let line1 = ["R98", "U47", "R26", "D63", "R33", "U87", "L62", "D20", "R33", "U53", "R51"];
-        let line2 = ["U98", "R91", "D20", "R16", "D67", "R40", "U7", "R15", "U6", "R7"];
+        let line1 = [
+            "R98", "U47", "R26", "D63", "R33", "U87", "L62", "D20", "R33", "U53", "R51",
+        ];
+        let line2 = [
+            "U98", "R91", "D20", "R16", "D67", "R40", "U7", "R15", "U6", "R7",
+        ];
 
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let manhattan_distance =
-            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(135, manhattan_distance);
+        assert_eq!(135, point.manhattan_distance());
     }
 
     #[test]
@@ -180,9 +224,8 @@ mod tests {
         let path1 = lines[0].split(',').map(Segment::new);
         let path2 = lines[1].split(',').map(Segment::new);
 
-        let manhattan_distance =
-            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(1431, manhattan_distance);
+        assert_eq!(1431, point.manhattan_distance());
     }
 }
