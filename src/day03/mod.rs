@@ -24,7 +24,7 @@ pub struct Segment {
 }
 
 impl Segment {
-    pub fn new(description: &str) -> Segment {
+    pub fn new(description: &str) -> Self {
         let direction = match description.chars().next().unwrap() {
             'R' => Direction::Right,
             'L' => Direction::Left,
@@ -80,7 +80,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(x: i32, y: i32, distance: i64) -> Point {
+    pub fn new(x: i32, y: i32, distance: i64) -> Self {
         Point { x, y, distance }
     }
 
@@ -124,6 +124,26 @@ impl Ord for Point {
     fn cmp(&self, other: &Self) -> Ordering { self.x.cmp(&other.x).then(self.y.cmp(&other.y)) }
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Intersection {
+    pub point1: Point,
+    pub point2: Point,
+}
+
+impl Intersection {
+    pub fn new(point1: Point, point2: Point) -> Self {
+        Intersection { point1, point2 }
+    }
+
+    pub fn manhattan_distance(self) -> i64 {
+        self.point1.manhattan_distance()
+    }
+
+    pub fn combined_steps_distance(self) -> i64 {
+        self.point1.distance + self.point2.distance
+    }
+}
+
 #[derive(Debug)]
 pub struct Error {
     pub kind: ErrorKind,
@@ -149,21 +169,27 @@ pub fn find_nearest_intersection(
     path1: impl Iterator<Item = Segment>,
     path2: impl Iterator<Item = Segment>,
     distance_function: DistanceFunction,
-) -> Result<Point, Error> {
-    if distance_function != DistanceFunction::Manhattan {
-        unimplemented!()
-    }
-
+) -> Result<Intersection, Error> {
     let path1 = to_points(path1);
     let path2 = to_points(path2);
 
-    let intersection: Vec<_> = path1.intersection(&path2).cloned().collect();
+    let intersections: Vec<_> = path1.intersection(&path2).cloned().collect();
 
-    let mut result: Option<Point> = None;
+    let mut result: Option<Intersection> = None;
 
-    for point in intersection {
-        if result.is_none() || point.manhattan_distance() < result.unwrap().manhattan_distance() {
-            result = Some(point);
+    for point in intersections {
+        match distance_function {
+            DistanceFunction::Manhattan => {
+                if result.is_none() || point.manhattan_distance() < result.unwrap().manhattan_distance() {
+                    result = Some(Intersection::new(*path1.get(&point).unwrap(), *path2.get(&point).unwrap()));
+                }
+            }
+            DistanceFunction::Steps => {
+                let intersection = Intersection::new(*path1.get(&point).unwrap(), *path2.get(&point).unwrap());
+                if result.is_none() || intersection.combined_steps_distance() < (result.unwrap().combined_steps_distance()) {
+                    result = Some(intersection);
+                }
+            }
         }
     }
 
@@ -181,9 +207,9 @@ mod tests {
         let path1 = ["R8", "U5", "L5", "D3"].iter().cloned().map(Segment::new);
         let path2 = ["U7", "R6", "D4", "L4"].iter().cloned().map(Segment::new);
 
-        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(6, point.manhattan_distance());
+        assert_eq!(6, intersection.manhattan_distance());
     }
 
     #[test]
@@ -194,9 +220,9 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(159, point.manhattan_distance());
+        assert_eq!(159, intersection.manhattan_distance());
     }
 
     #[test]
@@ -211,9 +237,9 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(135, point.manhattan_distance());
+        assert_eq!(135, intersection.manhattan_distance());
     }
 
     #[test]
@@ -224,8 +250,61 @@ mod tests {
         let path1 = lines[0].split(',').map(Segment::new);
         let path2 = lines[1].split(',').map(Segment::new);
 
-        let point = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
-        assert_eq!(1431, point.manhattan_distance());
+        assert_eq!(1431, intersection.manhattan_distance());
+    }
+
+    #[test]
+    fn test_day3_part2_example_1() {
+        let path1 = ["R8", "U5", "L5", "D3"].iter().cloned().map(Segment::new);
+        let path2 = ["U7", "R6", "D4", "L4"].iter().cloned().map(Segment::new);
+
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+
+        assert_eq!(30, intersection.combined_steps_distance());
+    }
+
+    #[test]
+    fn test_day3_part2_example_2() {
+        let line1 = ["R75", "D30", "R83", "U83", "L12", "D49", "R71", "U7", "L72"];
+        let line2 = ["U62", "R66", "U55", "R34", "D71", "R55", "D58", "R83"];
+
+        let path1 = line1.iter().cloned().map(Segment::new);
+        let path2 = line2.iter().cloned().map(Segment::new);
+
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+
+        assert_eq!(610, intersection.combined_steps_distance());
+    }
+
+    #[test]
+    fn test_day3_part2_example_3() {
+        let line1 = [
+            "R98", "U47", "R26", "D63", "R33", "U87", "L62", "D20", "R33", "U53", "R51",
+        ];
+        let line2 = [
+            "U98", "R91", "D20", "R16", "D67", "R40", "U7", "R15", "U6", "R7",
+        ];
+
+        let path1 = line1.iter().cloned().map(Segment::new);
+        let path2 = line2.iter().cloned().map(Segment::new);
+
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+
+        assert_eq!(410, intersection.combined_steps_distance());
+    }
+
+    #[test]
+    fn solve_day3_part2() {
+        let input = std::fs::read_to_string("src/day03/input.txt").unwrap();
+        let lines: Vec<_> = input.lines().collect();
+
+        let path1 = lines[0].split(',').map(Segment::new);
+        let path2 = lines[1].split(',').map(Segment::new);
+
+        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+
+        assert_eq!(48012, intersection.combined_steps_distance());
     }
 }
