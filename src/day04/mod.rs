@@ -161,4 +161,18 @@ mod tests {
             Password::new_with_range("111111", 100000..200000)
         );
     }
+
+    #[test]
+    fn solve_day4_part1_problem() {
+        let mut candidates = Vec::<String>::new();
+
+        for num in LOWER_BOUND..=UPPER_BOUND {
+            let password = num.to_string();
+            if Password::new(&password).is_ok() {
+                candidates.push(password);
+            }
+        }
+
+        assert_eq!(889, candidates.len());
+    }
 }
