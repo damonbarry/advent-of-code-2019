@@ -104,7 +104,9 @@ impl fmt::Debug for Point {
 
 // implement equality, hashing, ordering in terms of x and y only, not distance
 impl PartialEq for Point {
-    fn eq(&self, other: &Self) -> bool { self.x == other.x && self.y == other.y }
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
 }
 
 impl Eq for Point {}
@@ -117,11 +119,15 @@ impl Hash for Point {
 }
 
 impl PartialOrd for Point {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(&other)) }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(&other))
+    }
 }
 
 impl Ord for Point {
-    fn cmp(&self, other: &Self) -> Ordering { self.x.cmp(&other.x).then(self.y.cmp(&other.y)) }
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.x.cmp(&other.x).then(self.y.cmp(&other.y))
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -180,13 +186,22 @@ pub fn find_nearest_intersection(
     for point in intersections {
         match distance_function {
             DistanceFunction::Manhattan => {
-                if result.is_none() || point.manhattan_distance() < result.unwrap().manhattan_distance() {
-                    result = Some(Intersection::new(*path1.get(&point).unwrap(), *path2.get(&point).unwrap()));
+                if result.is_none()
+                    || point.manhattan_distance() < result.unwrap().manhattan_distance()
+                {
+                    result = Some(Intersection::new(
+                        *path1.get(&point).unwrap(),
+                        *path2.get(&point).unwrap(),
+                    ));
                 }
             }
             DistanceFunction::Steps => {
-                let intersection = Intersection::new(*path1.get(&point).unwrap(), *path2.get(&point).unwrap());
-                if result.is_none() || intersection.combined_steps_distance() < (result.unwrap().combined_steps_distance()) {
+                let intersection =
+                    Intersection::new(*path1.get(&point).unwrap(), *path2.get(&point).unwrap());
+                if result.is_none()
+                    || intersection.combined_steps_distance()
+                        < (result.unwrap().combined_steps_distance())
+                {
                     result = Some(intersection);
                 }
             }
@@ -207,7 +222,8 @@ mod tests {
         let path1 = ["R8", "U5", "L5", "D3"].iter().cloned().map(Segment::new);
         let path2 = ["U7", "R6", "D4", "L4"].iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
         assert_eq!(6, intersection.manhattan_distance());
     }
@@ -220,7 +236,8 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
         assert_eq!(159, intersection.manhattan_distance());
     }
@@ -237,7 +254,8 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
         assert_eq!(135, intersection.manhattan_distance());
     }
@@ -250,7 +268,8 @@ mod tests {
         let path1 = lines[0].split(',').map(Segment::new);
         let path2 = lines[1].split(',').map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Manhattan).unwrap();
 
         assert_eq!(1431, intersection.manhattan_distance());
     }
@@ -260,7 +279,8 @@ mod tests {
         let path1 = ["R8", "U5", "L5", "D3"].iter().cloned().map(Segment::new);
         let path2 = ["U7", "R6", "D4", "L4"].iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
 
         assert_eq!(30, intersection.combined_steps_distance());
     }
@@ -273,7 +293,8 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
 
         assert_eq!(610, intersection.combined_steps_distance());
     }
@@ -290,7 +311,8 @@ mod tests {
         let path1 = line1.iter().cloned().map(Segment::new);
         let path2 = line2.iter().cloned().map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
 
         assert_eq!(410, intersection.combined_steps_distance());
     }
@@ -303,7 +325,8 @@ mod tests {
         let path1 = lines[0].split(',').map(Segment::new);
         let path2 = lines[1].split(',').map(Segment::new);
 
-        let intersection = find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
+        let intersection =
+            find_nearest_intersection(path1, path2, DistanceFunction::Steps).unwrap();
 
         assert_eq!(48012, intersection.combined_steps_distance());
     }
