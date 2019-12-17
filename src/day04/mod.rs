@@ -40,17 +40,17 @@ mod tests {
 
     #[test]
     fn password_characters_must_be_numeric() {
-        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("12345z").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("abcdef").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("123-45").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("12.345").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("-12345").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotANumber), Password::new("12345z").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotANumber), Password::new("abcdef").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotANumber), Password::new("123-45").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotANumber), Password::new("12.345").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotANumber), Password::new("-12345").unwrap_err());
     }
 
     #[test]
     fn password_must_be_six_digits() {
-        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("12345").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("1234567").unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("0123456").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotSixDigits), Password::new("12345").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotSixDigits), Password::new("1234567").unwrap_err());
+        assert_eq!(Error::new(ErrorKind::NotSixDigits), Password::new("0123456").unwrap_err());
     }
 }
