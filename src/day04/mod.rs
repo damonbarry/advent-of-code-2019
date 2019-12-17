@@ -4,8 +4,16 @@ pub struct Password {
 }
 
 impl Password {
-    pub fn new(_value: &str) -> Result<Self, Error> {
-        Err(Error { kind: ErrorKind::NotSixDigits })
+    pub fn new(value: &str) -> Result<Self, Error> {
+        if !value.chars().all(|c| c.is_ascii_digit()) {
+            return Err(Error::new(ErrorKind::NotANumber));
+        }
+
+        if value.len() != 6 {
+            return Err(Error::new(ErrorKind::NotSixDigits));
+        }
+
+        Ok(Password { value: value.to_owned() })
     }
 }
 
@@ -14,8 +22,15 @@ pub struct Error {
     pub kind: ErrorKind,
 }
 
-#[derive(Debug, PartialEq)]
+impl Error {
+    pub fn new(kind: ErrorKind) -> Self {
+        Error { kind }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ErrorKind {
+    NotANumber,
     NotSixDigits,
 }
 
@@ -24,8 +39,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn password_characters_must_be_numeric() {
+        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("12345z").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("abcdef").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("123-45").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("12.345").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotANumber }, Password::new("-12345").unwrap_err());
+    }
+
+    #[test]
     fn password_must_be_six_digits() {
         assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("12345").unwrap_err());
         assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("1234567").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("0123456").unwrap_err());
     }
 }
