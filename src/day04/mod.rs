@@ -31,6 +31,15 @@ impl Password {
             return Err(Error::new(ErrorKind::NoDoubles));
         }
 
+        let mut cur: u32 = 0;
+        for ch in value.chars() {
+            let next = ch.to_digit(10).unwrap();
+            if next < cur {
+                return Err(Error::new(ErrorKind::DigitsDecrease));
+            }
+            cur = next;
+        }
+
         Ok(Password {
             value: value.to_owned(),
         })
@@ -50,6 +59,7 @@ impl Error {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ErrorKind {
+    DigitsDecrease,
     NoDoubles,
     NotANumber,
     NotSixDigits,
@@ -61,7 +71,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn password_characters_must_be_numeric() {
+    fn fails_if_any_char_is_not_a_number() {
         assert_eq!(
             Err(Error::new(ErrorKind::NotANumber)),
             Password::new("12345z")
@@ -86,17 +96,10 @@ mod tests {
             Err(Error::new(ErrorKind::NotANumber)),
             Password::new("-12345")
         );
-
-        assert_eq!(
-            Ok(Password {
-                value: "445566".to_owned()
-            }),
-            Password::new("445566")
-        );
     }
 
     #[test]
-    fn password_must_be_six_digits() {
+    fn fails_if_password_is_not_six_digits() {
         assert_eq!(
             Error::new(ErrorKind::NotSixDigits),
             Password::new("12345").unwrap_err()
@@ -111,17 +114,10 @@ mod tests {
             Error::new(ErrorKind::NotSixDigits),
             Password::new("0123456").unwrap_err()
         );
-
-        assert_eq!(
-            Ok(Password {
-                value: "445566".to_owned()
-            }),
-            Password::new("445566")
-        );
     }
 
     #[test]
-    fn password_must_be_in_the_given_range() {
+    fn fails_if_password_is_not_in_the_given_range() {
         assert_eq!(
             Error::new(ErrorKind::OutOfRange),
             Password::new_with_range("000004", 0..4).unwrap_err()
@@ -131,20 +127,38 @@ mod tests {
             Error::new(ErrorKind::OutOfRange),
             Password::new_with_range("000005", 0..=4).unwrap_err()
         );
+    }
+
+    #[test]
+    fn fails_if_no_two_adjacent_digits_are_the_same() {
+        assert_eq!(
+            Err(Error::new(ErrorKind::NoDoubles)),
+            Password::new_with_range("123789", 100000..200000)
+        );
+    }
+
+    #[test]
+    fn fails_if_successive_digits_decrease() {
+        assert_eq!(
+            Err(Error::new(ErrorKind::DigitsDecrease)),
+            Password::new_with_range("223450", 200000..300000)
+        );
+    }
+
+    #[test]
+    fn succeeds_if_password_meets_all_criteria() {
+        assert_eq!(
+            Ok(Password {
+                value: "345677".to_owned()
+            }),
+            Password::new("345677")
+        );
 
         assert_eq!(
             Ok(Password {
                 value: "111111".to_owned()
             }),
             Password::new_with_range("111111", 100000..200000)
-        );
-    }
-
-    #[test]
-    fn two_adjacent_digits_are_the_same() {
-        assert_eq!(
-            Err(Error::new(ErrorKind::NoDoubles)),
-            Password::new_with_range("123789", 100000..200000)
         );
     }
 }
