@@ -27,17 +27,31 @@ impl Password {
             return Err(Error::new(ErrorKind::OutOfRange));
         }
 
-        if !value.chars().zip(value.chars().skip(1)).any(|z| z.0 == z.1) {
+        let mut cch = 0_u32;
+        let mut prev: char = 'x';
+        for ch in value.chars() {
+            if ch == prev {
+                cch += 1;
+            } else if cch == 2 {
+                break;
+            } else {
+                cch = 1;
+            }
+
+            prev = ch;
+        }
+
+        if cch != 2 {
             return Err(Error::new(ErrorKind::NoDoubles));
         }
 
-        let mut cur: u32 = 0;
+        let mut prev: u32 = 0;
         for ch in value.chars() {
-            let next = ch.to_digit(10).unwrap();
-            if next < cur {
+            let cur = ch.to_digit(10).unwrap();
+            if cur < prev {
                 return Err(Error::new(ErrorKind::DigitsDecrease));
             }
-            cur = next;
+            prev = cur;
         }
 
         Ok(Password {
@@ -133,7 +147,15 @@ mod tests {
     fn fails_if_no_two_adjacent_digits_are_the_same() {
         assert_eq!(
             Err(Error::new(ErrorKind::NoDoubles)),
-            Password::new_with_range("123789", 100000..200000)
+            Password::new_with_range("123789", 100_000..200_000)
+        );
+    }
+
+    #[test]
+    fn fails_if_no_matching_adjacent_digits_are_pairs() {
+        assert_eq!(
+            Err(Error::new(ErrorKind::NoDoubles)),
+            Password::new_with_range("123444", 100_000..200_000)
         );
     }
 
@@ -141,7 +163,7 @@ mod tests {
     fn fails_if_successive_digits_decrease() {
         assert_eq!(
             Err(Error::new(ErrorKind::DigitsDecrease)),
-            Password::new_with_range("223450", 200000..300000)
+            Password::new_with_range("223450", 200_000..300_000)
         );
     }
 
@@ -149,21 +171,28 @@ mod tests {
     fn succeeds_if_password_meets_all_criteria() {
         assert_eq!(
             Ok(Password {
-                value: "345677".to_owned()
+                value: "345567".to_owned()
             }),
-            Password::new("345677")
+            Password::new("345567")
         );
 
         assert_eq!(
             Ok(Password {
-                value: "111111".to_owned()
+                value: "112233".to_owned()
             }),
-            Password::new_with_range("111111", 100000..200000)
+            Password::new_with_range("112233", 100_000..200_000)
+        );
+
+        assert_eq!(
+            Ok(Password {
+                value: "111122".to_owned()
+            }),
+            Password::new_with_range("111122", 100_000..200_000)
         );
     }
 
     #[test]
-    fn solve_day4_part1_problem() {
+    fn solve_day4_problem() {
         let mut candidates = Vec::<String>::new();
 
         for num in LOWER_BOUND..=UPPER_BOUND {
@@ -173,6 +202,6 @@ mod tests {
             }
         }
 
-        assert_eq!(889, candidates.len());
+        assert_eq!(589, candidates.len());
     }
 }
