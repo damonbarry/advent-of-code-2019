@@ -1,10 +1,10 @@
 #[derive(Debug)]
-pub struct Password<T> {
-    value: T
+pub struct Password {
+    value: String
 }
 
-impl<T> Password<T> {
-    pub fn new(_value: T) -> Result<Self, Error> {
+impl Password {
+    pub fn new(_value: &str) -> Result<Self, Error> {
         Err(Error { kind: ErrorKind::NotSixDigits })
     }
 }
@@ -25,7 +25,7 @@ mod tests {
 
     #[test]
     fn password_must_be_six_digits() {
-        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new(12345_u32).unwrap_err());
-        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new(1234567_u32).unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("12345").unwrap_err());
+        assert_eq!(Error { kind: ErrorKind::NotSixDigits }, Password::new("1234567").unwrap_err());
     }
 }
