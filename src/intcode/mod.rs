@@ -1,9 +1,10 @@
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 
 enum Operation {
     Addition { in1: usize, in2: usize, out: usize },
     Halt,
     Mulitplication { in1: usize, in2: usize, out: usize },
+    Print { address: usize },
     Store { value: i64, address: usize },
 }
 
@@ -18,6 +19,7 @@ pub enum ErrorKind {
     Input,
     InvalidOpcode,
     NotEnoughArguments,
+    Output,
     PositionOutOfRange,
 }
 
@@ -31,12 +33,13 @@ impl Program {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.run_with_input(Program::get_stdin)
+        self.run_with_io(Program::get_stdin, Program::print_stdout)
     }
 
-    pub fn run_with_input<F: Fn() -> Result<i64, Error>>(
+    pub fn run_with_io<I: Fn() -> Result<i64, Error>, O: Fn(i64) -> Result<(), Error>>(
         &mut self,
-        input_func: F,
+        input_func: I,
+        output_func: O,
     ) -> Result<(), Error> {
         if self.state.is_empty() {
             return Ok(());
@@ -57,6 +60,9 @@ impl Program {
                 }
                 Ok(Operation::Store { value, address }) => {
                     self.state[address] = value;
+                }
+                Ok(Operation::Print { address }) => {
+                    return output_func(self.state[address]);
                 }
                 Err(err) => return Err(err),
             };
@@ -92,14 +98,23 @@ impl Program {
                     })
                 }
             }
-            3 => {
+            n @ 3 | n @ 4 => {
                 *pos += 2;
                 if self.range().contains(&(*pos - 1)) {
                     self.check_range(*pos - 1)?;
-                    let value = input_func()?;
-                    Ok(Operation::Store {
-                        value,
-                        address: self.state[*pos - 1] as usize,
+
+                    Ok(match n {
+                        3 => {
+                            let value = input_func()?;
+                            Operation::Store {
+                                value,
+                                address: self.state[*pos - 1] as usize,
+                            }
+                        }
+                        4 => Operation::Print {
+                            address: self.state[*pos - 1] as usize,
+                        },
+                        _ => unreachable!(),
                     })
                 } else {
                     Err(Error {
@@ -141,6 +156,14 @@ impl Program {
             position: 0,
         })?;
         Ok(buffer.parse::<i64>().unwrap())
+    }
+
+    pub fn print_stdout(value: i64) -> Result<(), Error> {
+        let buf = value.to_string();
+        io::stdout().write_all(buf.as_bytes()).map_err(|_| Error {
+            kind: ErrorKind::Output,
+            position: 0,
+        })
     }
 }
 
@@ -309,8 +332,45 @@ mod tests {
     fn understands_store() {
         let instructions = [3, 3, 99, 0];
         let mut program = Program::new(instructions.to_vec());
-        let result = program.run_with_input(|| Ok(77));
+        let result = program.run_with_io(|| Ok(77), |_| unreachable!());
         assert!(result.is_ok());
         assert_eq!(&[3, 3, 99, 77], &program.state[..]);
+    }
+
+    #[test]
+    fn fails_print_when_input_position_is_out_of_range() {
+        let instructions = [4, 5555, 99];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
+        assert_eq!(1, err.position);
+    }
+
+    #[test]
+    fn fails_print_when_there_are_not_enough_arguments() {
+        let instructions = [4];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
+        assert_eq!(0, err.position);
+    }
+
+    #[test]
+    fn understands_print() {
+        let instructions = [4, 3, 99, 77];
+        let mut program = Program::new(instructions.to_vec());
+        let input = || unreachable!();
+        let output = |i| {
+            assert_eq!(77, i);
+            Ok(())
+        };
+
+        let result = program.run_with_io(input, output);
+        assert!(result.is_ok());
+        assert_eq!(&[4, 3, 99, 77], &program.state[..]);
     }
 }
