@@ -243,7 +243,7 @@ impl Program {
     ) -> Result<ParameterMode, Error> {
         let place = 10_i64.checked_pow(which + 1).unwrap();
         match value / place {
-            0 => Ok(ParameterMode::Position),
+            0 | 10 => Ok(ParameterMode::Position),
             1 => Ok(ParameterMode::Immediate),
             _ => Err(Error {
                 kind: ErrorKind::InvalidParameterMode,
@@ -361,20 +361,29 @@ mod tests {
 
     #[test]
     fn adds_when_parameters_are_in_position_mode() {
-        let instructions = [1, 5, 6, 7, 99, 3, 7, 0];
+        let instructions = [1, 5, 6, 7, 99, 10, 20, 0];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &program.state[..]);
+        assert_eq!(&[1, 5, 6, 7, 99, 10, 20, 30], &program.state[..]);
     }
 
     #[test]
     fn adds_when_first_parameter_is_in_immediate_mode() {
-        let instructions = [101, 3, 5, 6, 99, 7, 0];
+        let instructions = [101, 10, 5, 6, 99, 20, 0];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[101, 3, 5, 6, 99, 7, 10], &program.state[..]);
+        assert_eq!(&[101, 10, 5, 6, 99, 20, 30], &program.state[..]);
+    }
+
+    #[test]
+    fn adds_when_second_parameter_is_in_immediate_mode() {
+        let instructions = [1001, 5, 20, 6, 99, 10, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1001, 5, 20, 6, 99, 10, 30], &program.state[..]);
     }
 
     #[test]
