@@ -58,10 +58,10 @@ impl Program {
         self.run_with_io(Program::get_stdin, Program::print_stdout)
     }
 
-    pub fn run_with_io<I: Fn() -> Result<i64, Error>, O: Fn(i64) -> Result<(), Error>>(
+    pub fn run_with_io<I: Fn() -> Result<i64, Error>, O: FnMut(i64) -> Result<(), Error>>(
         &mut self,
         input_func: I,
-        output_func: O,
+        mut output_func: O,
     ) -> Result<(), Error> {
         if self.state.is_empty() {
             return Ok(());
