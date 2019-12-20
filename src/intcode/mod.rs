@@ -529,7 +529,7 @@ mod tests {
     }
 
     #[test]
-    fn understands_print() {
+    fn prints_when_parameter_is_in_position_mode() {
         let instructions = [4, 3, 99, 77];
         let mut program = Program::new(instructions.to_vec());
         let input = || unreachable!();
@@ -541,5 +541,20 @@ mod tests {
         let result = program.run_with_io(input, output);
         assert!(result.is_ok());
         assert_eq!(&[4, 3, 99, 77], &program.state[..]);
+    }
+
+    #[test]
+    fn prints_when_parameter_is_in_immediate_mode() {
+        let instructions = [104, 77, 99];
+        let mut program = Program::new(instructions.to_vec());
+        let input = || unreachable!();
+        let output = |i| {
+            assert_eq!(77, i);
+            Ok(())
+        };
+
+        let result = program.run_with_io(input, output);
+        assert!(result.is_ok());
+        assert_eq!(&[104, 77, 99], &program.state[..]);
     }
 }
