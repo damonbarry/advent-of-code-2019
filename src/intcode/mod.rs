@@ -440,12 +440,39 @@ mod tests {
     }
 
     #[test]
-    fn understands_multiply() {
-        let instructions = [2, 5, 6, 7, 99, 3, 7, 0];
+    fn multiplies_when_parameters_are_in_position_mode() {
+        let instructions = [2, 5, 6, 7, 99, 10, 20, 0];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[2, 5, 6, 7, 99, 3, 7, 21], &program.state[..]);
+        assert_eq!(&[2, 5, 6, 7, 99, 10, 20, 200], &program.state[..]);
+    }
+
+    #[test]
+    fn multiplies_when_first_parameter_is_in_immediate_mode() {
+        let instructions = [102, 10, 5, 6, 99, 20, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[102, 10, 5, 6, 99, 20, 200], &program.state[..]);
+    }
+
+    #[test]
+    fn multiplies_when_second_parameter_is_in_immediate_mode() {
+        let instructions = [1002, 5, 20, 6, 99, 10, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1002, 5, 20, 6, 99, 10, 200], &program.state[..]);
+    }
+
+    #[test]
+    fn multiplies_when_both_parameters_are_in_immediate_mode() {
+        let instructions = [1102, 10, 20, 5, 99, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1102, 10, 20, 5, 99, 200], &program.state[..]);
     }
 
     #[test]
