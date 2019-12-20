@@ -244,7 +244,7 @@ impl Program {
         let place = 10_i64.checked_pow(which + 1).unwrap();
         match value / place {
             0 | 10 => Ok(ParameterMode::Position),
-            1 => Ok(ParameterMode::Immediate),
+            1 | 11 => Ok(ParameterMode::Immediate),
             _ => Err(Error {
                 kind: ErrorKind::InvalidParameterMode,
                 position,
@@ -384,6 +384,15 @@ mod tests {
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[1001, 5, 20, 6, 99, 10, 30], &program.state[..]);
+    }
+
+    #[test]
+    fn adds_when_both_parameters_are_in_immediate_mode() {
+        let instructions = [1101, 10, 20, 5, 99, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1101, 10, 20, 5, 99, 30], &program.state[..]);
     }
 
     #[test]
