@@ -396,6 +396,15 @@ mod tests {
     }
 
     #[test]
+    fn adds_negative_parameter_in_immediate_mode() {
+        let instructions = [1101,100,-1,4,0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1101,100,-1,4,99], &program.state[..]);
+    }
+
+    #[test]
     fn fails_multiply_when_first_input_position_is_out_of_range() {
         let instructions = [2, 5555, 6, 7, 99, 3, 7, 0].to_vec();
         let mut program = Program::new(instructions);
