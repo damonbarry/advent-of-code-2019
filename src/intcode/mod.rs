@@ -1,10 +1,31 @@
 use std::io::{self, Read, Write};
 
-enum Operation {
-    Addition { in1: usize, in2: usize, out: usize },
+enum ParameterMode {
+    Position,
+    Immediate,
+}
+
+enum Opcode {
+    Addition {
+        param1: ParameterMode,
+        param2: ParameterMode,
+    },
     Halt,
-    Mulitplication { in1: usize, in2: usize, out: usize },
-    Print { address: usize },
+    Mulitplication {
+        param1: ParameterMode,
+        param2: ParameterMode,
+    },
+    Print {
+        param: ParameterMode,
+    },
+    Store,
+}
+
+enum Operation {
+    Addition { in1: i64, in2: i64, out: usize },
+    Halt,
+    Mulitplication { in1: i64, in2: i64, out: usize },
+    Print { value: i64 },
     Store { value: i64, address: usize },
 }
 
@@ -18,6 +39,7 @@ pub struct Error {
 pub enum ErrorKind {
     Input,
     InvalidOpcode,
+    InvalidParameterMode,
     NotEnoughArguments,
     Output,
     PositionOutOfRange,
@@ -53,16 +75,16 @@ impl Program {
                     return Ok(());
                 }
                 Ok(Operation::Addition { in1, in2, out }) => {
-                    self.state[out] = self.state[in1] + self.state[in2];
+                    self.state[out] = in1 + in2;
                 }
                 Ok(Operation::Mulitplication { in1, in2, out }) => {
-                    self.state[out] = self.state[in1] * self.state[in2];
+                    self.state[out] = in1 * in2;
                 }
                 Ok(Operation::Store { value, address }) => {
                     self.state[address] = value;
                 }
-                Ok(Operation::Print { address }) => {
-                    return output_func(self.state[address]);
+                Ok(Operation::Print { value }) => {
+                    output_func(value)?;
                 }
                 Err(err) => return Err(err),
             };
@@ -74,74 +96,167 @@ impl Program {
         pos: &mut usize,
         input_func: &F,
     ) -> Result<Operation, Error> {
-        match self.state[*pos] {
-            n @ 1 | n @ 2 => {
-                *pos += 4;
-                if self.range().contains(&(*pos - 1)) {
-                    self.check_range(*pos - 3)?;
-                    self.check_range(*pos - 2)?;
-                    self.check_range(*pos - 1)?;
-
-                    let in1 = self.state[*pos - 3] as usize;
-                    let in2 = self.state[*pos - 2] as usize;
-                    let out = self.state[*pos - 1] as usize;
-
-                    Ok(match n {
-                        1 => Operation::Addition { in1, in2, out },
-                        2 => Operation::Mulitplication { in1, in2, out },
-                        _ => unreachable!(),
-                    })
-                } else {
-                    Err(Error {
-                        kind: ErrorKind::NotEnoughArguments,
-                        position: self.state.len() - 1,
-                    })
-                }
+        let opcode = Program::parse_opcode(self.state[*pos], *pos)?;
+        match opcode {
+            Opcode::Addition { .. } => {
+                let (in1, in2, out) = self.get_three_args(pos)?;
+                let (in1, in2) = self
+                    .resolve_input_args(opcode, in1, in2)
+                    .map_err(|p| Error {
+                        kind: ErrorKind::PositionOutOfRange,
+                        position: *pos - 4 + p as usize,
+                    })?;
+                Ok(Operation::Addition { in1, in2, out })
             }
-            n @ 3 | n @ 4 => {
-                *pos += 2;
-                if self.range().contains(&(*pos - 1)) {
-                    self.check_range(*pos - 1)?;
-
-                    Ok(match n {
-                        3 => {
-                            let value = input_func()?;
-                            Operation::Store {
-                                value,
-                                address: self.state[*pos - 1] as usize,
-                            }
-                        }
-                        4 => Operation::Print {
-                            address: self.state[*pos - 1] as usize,
-                        },
-                        _ => unreachable!(),
-                    })
-                } else {
-                    Err(Error {
-                        kind: ErrorKind::NotEnoughArguments,
-                        position: self.state.len() - 1,
-                    })
-                }
+            Opcode::Mulitplication { .. } => {
+                let (in1, in2, out) = self.get_three_args(pos)?;
+                let (in1, in2) = self
+                    .resolve_input_args(opcode, in1, in2)
+                    .map_err(|p| Error {
+                        kind: ErrorKind::PositionOutOfRange,
+                        position: *pos - 4 + p as usize,
+                    })?;
+                Ok(Operation::Mulitplication { in1, in2, out })
             }
-            99 => {
+            Opcode::Store => {
+                let address = self.get_one_arg(pos)?;
+                self.check_range(address).map_err(|_| Error {
+                    kind: ErrorKind::PositionOutOfRange,
+                    position: *pos - 1,
+                })?;
+                let value = input_func()?;
+                Ok(Operation::Store { value, address })
+            }
+            Opcode::Print { .. } => {
+                let address = self.get_one_arg(pos)?;
+                let value = self.resolve_input_arg(opcode, address).map_err(|_| Error {
+                    kind: ErrorKind::PositionOutOfRange,
+                    position: *pos - 1,
+                })?;
+                Ok(Operation::Print { value })
+            }
+            Opcode::Halt => {
                 *pos = 0;
                 Ok(Operation::Halt)
             }
+        }
+    }
+
+    fn get_three_args(&mut self, pos: &mut usize) -> Result<(usize, usize, usize), Error> {
+        *pos += 4;
+        self.check_range(*pos - 1).map_err(|_| Error {
+            kind: ErrorKind::NotEnoughArguments,
+            position: self.state.len() - 1,
+        })?;
+
+        // Check that the value addressed by the 3rd (output) parameter is, itself, a valid address.
+        self.check_range(self.state[*pos - 1] as usize)
+            .map_err(|_| Error {
+                kind: ErrorKind::PositionOutOfRange,
+                position: *pos - 1,
+            })?;
+
+        let in1 = self.state[*pos - 3] as usize;
+        let in2 = self.state[*pos - 2] as usize;
+        let out = self.state[*pos - 1] as usize;
+
+        Ok((in1, in2, out))
+    }
+
+    fn resolve_input_args(
+        &mut self,
+        opcode: Opcode,
+        in1: usize,
+        in2: usize,
+    ) -> Result<(i64, i64), u8> {
+        match opcode {
+            Opcode::Addition { param1, param2 } | Opcode::Mulitplication { param1, param2 } => {
+                let i1 = match param1 {
+                    ParameterMode::Position => {
+                        self.check_range(in1).map_err(|_| 1)?;
+                        self.state[in1]
+                    }
+                    ParameterMode::Immediate => in1 as i64,
+                };
+                let i2 = match param2 {
+                    ParameterMode::Position => {
+                        self.check_range(in2).map_err(|_| 2)?;
+                        self.state[in2]
+                    }
+                    ParameterMode::Immediate => in2 as i64,
+                };
+
+                Ok((i1, i2))
+            }
+            _ => panic!("Only call resolve_input_args for Opcodes with two parameters"),
+        }
+    }
+
+    fn get_one_arg(&mut self, pos: &mut usize) -> Result<usize, Error> {
+        *pos += 2;
+        self.check_range(*pos - 1).map_err(|_| Error {
+            kind: ErrorKind::NotEnoughArguments,
+            position: self.state.len() - 1,
+        })?;
+        Ok(self.state[*pos - 1] as usize)
+    }
+
+    fn resolve_input_arg(&mut self, opcode: Opcode, in1: usize) -> Result<i64, ()> {
+        match opcode {
+            Opcode::Print { param } => match param {
+                ParameterMode::Position => {
+                    self.check_range(in1)?;
+                    Ok(self.state[in1])
+                }
+                ParameterMode::Immediate => Ok(in1 as i64),
+            },
+            _ => panic!("Only call resolve_input_arg for Opcodes with two parameters"),
+        }
+    }
+
+    fn parse_opcode(opcode: i64, position: usize) -> Result<Opcode, Error> {
+        match opcode % 100 {
+            1 => Ok(Opcode::Addition {
+                param1: Program::parse_parameter_mode(opcode, 1, position)?,
+                param2: Program::parse_parameter_mode(opcode, 2, position)?,
+            }),
+            2 => Ok(Opcode::Mulitplication {
+                param1: Program::parse_parameter_mode(opcode, 1, position)?,
+                param2: Program::parse_parameter_mode(opcode, 2, position)?,
+            }),
+            3 => Ok(Opcode::Store),
+            4 => Ok(Opcode::Print {
+                param: Program::parse_parameter_mode(opcode, 1, position)?,
+            }),
+            99 => Ok(Opcode::Halt),
             _ => Err(Error {
                 kind: ErrorKind::InvalidOpcode,
-                position: *pos,
+                position,
             }),
         }
     }
 
-    fn check_range(&self, p: usize) -> Result<(), Error> {
-        if self.range().contains(&(self.state[p] as usize)) {
+    fn parse_parameter_mode(
+        value: i64,
+        which: u32,
+        position: usize,
+    ) -> Result<ParameterMode, Error> {
+        let place = 10_i64.checked_pow(which + 1).unwrap();
+        match value / place {
+            0 => Ok(ParameterMode::Position),
+            1 => Ok(ParameterMode::Immediate),
+            _ => Err(Error {
+                kind: ErrorKind::InvalidParameterMode,
+                position,
+            }),
+        }
+    }
+
+    fn check_range(&self, address: usize) -> Result<(), ()> {
+        if self.range().contains(&address) {
             Ok(())
         } else {
-            Err(Error {
-                kind: ErrorKind::PositionOutOfRange,
-                position: p,
-            })
+            Err(())
         }
     }
 
@@ -245,12 +360,21 @@ mod tests {
     }
 
     #[test]
-    fn understands_add() {
+    fn adds_when_parameters_are_in_position_mode() {
         let instructions = [1, 5, 6, 7, 99, 3, 7, 0];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[1, 5, 6, 7, 99, 3, 7, 10], &program.state[..]);
+    }
+
+    #[test]
+    fn adds_when_first_parameter_is_in_immediate_mode() {
+        let instructions = [101, 3, 5, 6, 99, 7, 0];
+        let mut program = Program::new(instructions.to_vec());
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[101, 3, 5, 6, 99, 7, 10], &program.state[..]);
     }
 
     #[test]
