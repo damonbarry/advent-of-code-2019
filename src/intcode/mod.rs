@@ -32,7 +32,7 @@ enum Operation {
 #[derive(Debug)]
 pub struct Error {
     pub kind: ErrorKind,
-    pub position: usize,
+    pub address: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -47,11 +47,23 @@ pub enum ErrorKind {
 
 pub struct Program {
     pub state: Vec<i64>,
+    instruction_pointer: usize,
 }
 
 impl Program {
     pub fn new(init: Vec<i64>) -> Program {
-        Program { state: init }
+        Program {
+            state: init,
+            instruction_pointer: 0,
+        }
+    }
+
+    fn peek_current_address(&self) -> i64 {
+        self.state[self.instruction_pointer]
+    }
+
+    fn advance_instruction_pointer(&mut self, distance: usize) {
+        self.instruction_pointer += distance;
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
@@ -67,10 +79,8 @@ impl Program {
             return Ok(());
         }
 
-        let mut pos: usize = 0;
-
         loop {
-            match self.next_op(&mut pos, &input_func) {
+            match self.next_op(&input_func) {
                 Ok(Operation::Halt) => {
                     return Ok(());
                 }
@@ -93,72 +103,73 @@ impl Program {
 
     fn next_op<F: Fn() -> Result<i64, Error>>(
         &mut self,
-        pos: &mut usize,
         input_func: &F,
     ) -> Result<Operation, Error> {
-        let opcode = Program::parse_opcode(self.state[*pos], *pos)?;
+        let address = self.instruction_pointer;
+        let opcode = Program::parse_opcode(self.peek_current_address(), address)?;
         match opcode {
             Opcode::Addition { .. } => {
-                let (in1, in2, out) = self.get_three_args(pos)?;
+                let (in1, in2, out) = self.get_three_args()?;
                 let (in1, in2) = self
                     .resolve_input_args(opcode, in1, in2)
                     .map_err(|p| Error {
                         kind: ErrorKind::PositionOutOfRange,
-                        position: *pos - 4 + p as usize,
+                        address: address + p as usize,
                     })?;
                 Ok(Operation::Addition { in1, in2, out })
             }
             Opcode::Mulitplication { .. } => {
-                let (in1, in2, out) = self.get_three_args(pos)?;
+                let (in1, in2, out) = self.get_three_args()?;
                 let (in1, in2) = self
                     .resolve_input_args(opcode, in1, in2)
                     .map_err(|p| Error {
                         kind: ErrorKind::PositionOutOfRange,
-                        position: *pos - 4 + p as usize,
+                        address: address + p as usize,
                     })?;
                 Ok(Operation::Mulitplication { in1, in2, out })
             }
             Opcode::Store => {
-                let address = self.get_one_arg(pos)?;
-                self.check_range(address).map_err(|_| Error {
+                let store_address = self.get_one_arg()?;
+                self.check_range(store_address).map_err(|_| Error {
                     kind: ErrorKind::PositionOutOfRange,
-                    position: *pos - 1,
+                    address: address + 1,
                 })?;
                 let value = input_func()?;
-                Ok(Operation::Store { value, address })
+                Ok(Operation::Store { value, address: store_address })
             }
             Opcode::Print { .. } => {
-                let address = self.get_one_arg(pos)?;
-                let value = self.resolve_input_arg(opcode, address).map_err(|_| Error {
+                let arg = self.get_one_arg()?;
+                let value = self.resolve_input_arg(opcode, arg).map_err(|_| Error {
                     kind: ErrorKind::PositionOutOfRange,
-                    position: *pos - 1,
+                    address: address + 1,
                 })?;
                 Ok(Operation::Print { value })
             }
             Opcode::Halt => {
-                *pos = 0;
+                self.advance_instruction_pointer(1);
                 Ok(Operation::Halt)
             }
         }
     }
 
-    fn get_three_args(&mut self, pos: &mut usize) -> Result<(usize, usize, usize), Error> {
-        *pos += 4;
-        self.check_range(*pos - 1).map_err(|_| Error {
+    fn get_three_args(&mut self) -> Result<(usize, usize, usize), Error> {
+        self.advance_instruction_pointer(4);
+        let address = self.instruction_pointer;
+        self.check_range(address - 1).map_err(|_| Error {
             kind: ErrorKind::NotEnoughArguments,
-            position: self.state.len() - 1,
+            address: self.state.len() - 1,
         })?;
 
         // Check that the value addressed by the 3rd (output) parameter is, itself, a valid address.
-        self.check_range(self.state[*pos - 1] as usize)
+        self.check_range(self.state[address - 1] as usize)
             .map_err(|_| Error {
                 kind: ErrorKind::PositionOutOfRange,
-                position: *pos - 1,
+                address: address - 1,
             })?;
 
-        let in1 = self.state[*pos - 3] as usize;
-        let in2 = self.state[*pos - 2] as usize;
-        let out = self.state[*pos - 1] as usize;
+        let in1 = self.state[address - 3] as usize;
+        let in2 = self.state[address - 2] as usize;
+        let out = self.state[address - 1] as usize;
 
         Ok((in1, in2, out))
     }
@@ -192,13 +203,14 @@ impl Program {
         }
     }
 
-    fn get_one_arg(&mut self, pos: &mut usize) -> Result<usize, Error> {
-        *pos += 2;
-        self.check_range(*pos - 1).map_err(|_| Error {
+    fn get_one_arg(&mut self) -> Result<usize, Error> {
+        self.advance_instruction_pointer(2);
+        let address = self.instruction_pointer;
+        self.check_range(address - 1).map_err(|_| Error {
             kind: ErrorKind::NotEnoughArguments,
-            position: self.state.len() - 1,
+            address: self.state.len() - 1,
         })?;
-        Ok(self.state[*pos - 1] as usize)
+        Ok(self.state[address - 1] as usize)
     }
 
     fn resolve_input_arg(&mut self, opcode: Opcode, in1: usize) -> Result<i64, ()> {
@@ -214,24 +226,24 @@ impl Program {
         }
     }
 
-    fn parse_opcode(opcode: i64, position: usize) -> Result<Opcode, Error> {
+    fn parse_opcode(opcode: i64, address: usize) -> Result<Opcode, Error> {
         match opcode % 100 {
             1 => Ok(Opcode::Addition {
-                param1: Program::parse_parameter_mode(opcode, 1, position)?,
-                param2: Program::parse_parameter_mode(opcode, 2, position)?,
+                param1: Program::parse_parameter_mode(opcode, 1, address)?,
+                param2: Program::parse_parameter_mode(opcode, 2, address)?,
             }),
             2 => Ok(Opcode::Mulitplication {
-                param1: Program::parse_parameter_mode(opcode, 1, position)?,
-                param2: Program::parse_parameter_mode(opcode, 2, position)?,
+                param1: Program::parse_parameter_mode(opcode, 1, address)?,
+                param2: Program::parse_parameter_mode(opcode, 2, address)?,
             }),
             3 => Ok(Opcode::Store),
             4 => Ok(Opcode::Print {
-                param: Program::parse_parameter_mode(opcode, 1, position)?,
+                param: Program::parse_parameter_mode(opcode, 1, address)?,
             }),
             99 => Ok(Opcode::Halt),
             _ => Err(Error {
                 kind: ErrorKind::InvalidOpcode,
-                position,
+                address,
             }),
         }
     }
@@ -239,7 +251,7 @@ impl Program {
     fn parse_parameter_mode(
         value: i64,
         which: u32,
-        position: usize,
+        address: usize,
     ) -> Result<ParameterMode, Error> {
         let place = 10_i64.checked_pow(which + 1).unwrap();
         match value / place {
@@ -247,7 +259,7 @@ impl Program {
             1 | 11 => Ok(ParameterMode::Immediate),
             _ => Err(Error {
                 kind: ErrorKind::InvalidParameterMode,
-                position,
+                address,
             }),
         }
     }
@@ -268,7 +280,7 @@ impl Program {
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer).map_err(|_| Error {
             kind: ErrorKind::Input,
-            position: 0,
+            address: 0,
         })?;
         Ok(buffer.parse::<i64>().unwrap())
     }
@@ -277,7 +289,7 @@ impl Program {
         let buf = value.to_string();
         io::stdout().write_all(buf.as_bytes()).map_err(|_| Error {
             kind: ErrorKind::Output,
-            position: 0,
+            address: 0,
         })
     }
 }
@@ -303,7 +315,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::InvalidOpcode, err.kind);
-        assert_eq!(4, err.position);
+        assert_eq!(4, err.address);
     }
 
     #[test]
@@ -323,7 +335,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(1, err.position);
+        assert_eq!(1, err.address);
     }
 
     #[test]
@@ -334,7 +346,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(2, err.position);
+        assert_eq!(2, err.address);
     }
 
     #[test]
@@ -345,7 +357,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(3, err.position);
+        assert_eq!(3, err.address);
     }
 
     #[test]
@@ -356,7 +368,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
-        assert_eq!(2, err.position);
+        assert_eq!(2, err.address);
     }
 
     #[test]
@@ -412,7 +424,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(1, err.position);
+        assert_eq!(1, err.address);
     }
 
     #[test]
@@ -423,7 +435,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(2, err.position);
+        assert_eq!(2, err.address);
     }
 
     #[test]
@@ -434,7 +446,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(3, err.position);
+        assert_eq!(3, err.address);
     }
 
     #[test]
@@ -445,7 +457,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
-        assert_eq!(2, err.position);
+        assert_eq!(2, err.address);
     }
 
     #[test]
@@ -492,7 +504,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(1, err.position);
+        assert_eq!(1, err.address);
     }
 
     #[test]
@@ -503,7 +515,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
-        assert_eq!(0, err.position);
+        assert_eq!(0, err.address);
     }
 
     #[test]
@@ -523,7 +535,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::PositionOutOfRange, err.kind);
-        assert_eq!(1, err.position);
+        assert_eq!(1, err.address);
     }
 
     #[test]
@@ -534,7 +546,7 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(ErrorKind::NotEnoughArguments, err.kind);
-        assert_eq!(0, err.position);
+        assert_eq!(0, err.address);
     }
 
     #[test]
