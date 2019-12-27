@@ -135,7 +135,10 @@ impl Program {
                     address: address + 1,
                 })?;
                 let value = input_func()?;
-                Ok(Operation::Store { value, address: store_address })
+                Ok(Operation::Store {
+                    value,
+                    address: store_address,
+                })
             }
             Opcode::Print { .. } => {
                 let arg = self.get_one_arg()?;
@@ -409,11 +412,11 @@ mod tests {
 
     #[test]
     fn adds_negative_parameter_in_immediate_mode() {
-        let instructions = [1101,100,-1,4,0];
+        let instructions = [1101, 100, -1, 4, 0];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[1101,100,-1,4,99], &program.state[..]);
+        assert_eq!(&[1101, 100, -1, 4, 99], &program.state[..]);
     }
 
     #[test]

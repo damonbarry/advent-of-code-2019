@@ -12,10 +12,13 @@ mod tests {
             .collect();
 
         let mut program = Program::new(instructions);
-        let result = program.run_with_io(|| Ok(1), |i| {
-            output.push(i);
-            Ok(())
-        });
+        let result = program.run_with_io(
+            || Ok(1),
+            |i| {
+                output.push(i);
+                Ok(())
+            },
+        );
         assert!(result.is_ok());
         let (left, right) = output.split_at(output.len() - 1);
         assert!(left.iter().all(|i| *i == 0));
