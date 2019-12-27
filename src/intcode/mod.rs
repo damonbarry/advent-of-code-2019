@@ -1,5 +1,8 @@
 use std::io::{self, Read, Write};
 
+pub mod instruction;
+pub mod program;
+
 enum ParameterMode {
     Position,
     Immediate,
@@ -511,7 +514,7 @@ mod tests {
     }
 
     #[test]
-    fn fails_store_when_there_are_not_enough_arguments() {
+    fn fails_store_when_there_are_not_enough_parameters() {
         let instructions = [3];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();
@@ -542,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn fails_print_when_there_are_not_enough_arguments() {
+    fn fails_print_when_there_are_not_enough_parameters() {
         let instructions = [4];
         let mut program = Program::new(instructions.to_vec());
         let result = program.run();

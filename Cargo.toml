@@ -5,5 +5,7 @@ authors = ["Damon Barry <damonbarry@outlook.com>"]
 edition = "2018"
 
 [dependencies]
+failure = "0.1.6"
+failure_derive = "0.1.6"
 libmath = "0.2.1"
 num = "0.2.0"

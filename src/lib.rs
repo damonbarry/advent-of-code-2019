@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate failure_derive;
+
 pub mod day01;
 pub mod day02;
 pub mod day03;
