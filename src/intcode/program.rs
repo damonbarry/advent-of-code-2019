@@ -1,7 +1,7 @@
 use super::instruction::{self, Opcode};
 
 pub struct Program {
-    memory: Vec<i64>,
+    pub memory: Vec<i64>,
     instruction_pointer: usize,
 }
 

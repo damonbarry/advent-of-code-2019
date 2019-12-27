@@ -1,17 +1,17 @@
 #[cfg(test)]
 mod tests {
-    use crate::intcode::Program;
+    use crate::intcode::program::Program;
 
     #[test]
     fn solve_day5_part1() {
         let mut output = Vec::<i64>::new();
         let input = std::fs::read_to_string("src/day05/input.txt").unwrap();
-        let instructions: Vec<i64> = input
+        let memory: Vec<i64> = input
             .split(',')
             .map(|i| i.parse::<i64>().unwrap())
             .collect();
 
-        let mut program = Program::new(instructions);
+        let mut program = Program::new(&memory);
         let result = program.run_with_io(
             || Ok(1),
             |i| {
