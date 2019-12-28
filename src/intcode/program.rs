@@ -31,7 +31,7 @@ impl Program {
                 .address(self.instruction_pointer)?;
 
             {
-                let advance = match opcode {
+                let advance_address = match opcode {
                     Opcode::Addition { param1, param2 } => instruction::add(
                         &mut self.memory,
                         self.instruction_pointer,
@@ -47,7 +47,7 @@ impl Program {
                     .address(self.instruction_pointer)?,
                     Opcode::Print { param } => {
                         let mut value: i64 = 0;
-                        let advance = instruction::print(
+                        let advance_address = instruction::print(
                             &mut self.memory,
                             self.instruction_pointer,
                             param,
@@ -55,7 +55,7 @@ impl Program {
                         )
                         .address(self.instruction_pointer)?;
                         output_func(value).address(self.instruction_pointer)?;
-                        advance
+                        advance_address
                     }
                     Opcode::Store => instruction::store(
                         &mut self.memory,
@@ -65,7 +65,7 @@ impl Program {
                     .address(self.instruction_pointer)?,
                 };
 
-                self.instruction_pointer += advance;
+                self.instruction_pointer = advance_address;
             }
 
             assert!(self.instruction_pointer <= self.memory.len());

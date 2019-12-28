@@ -100,6 +100,7 @@ macro_rules! instruction {
                 return Err(ErrorKind::NotEnoughParameters);
             }
 
+            let advance_address = address + INSTRUCTION_SIZE;
             let address = address + 1; // skip over opcode to the 1st param
 
             let mut read_iter = read_modes.iter();
@@ -138,7 +139,7 @@ macro_rules! instruction {
                 memory[*address] = value;
             }
 
-            Ok(INSTRUCTION_SIZE)
+            Ok(advance_address)
         }
     };
 }
@@ -167,7 +168,9 @@ pub fn print(
         return Err(ErrorKind::NotEnoughParameters);
     }
 
+    let advance_address = address + INSTRUCTION_SIZE;
     let address = address + 1;
+
     *out_value = match read_mode {
         ParameterMode::Position => {
             let address = memory[address] as usize;
@@ -180,7 +183,7 @@ pub fn print(
         ParameterMode::Immediate => Ok(memory[address]),
     }?;
 
-    Ok(INSTRUCTION_SIZE)
+    Ok(advance_address)
 }
 
 pub fn store(memory: &mut [i64], address: usize, input: i64) -> Result<usize, ErrorKind> {
@@ -190,14 +193,16 @@ pub fn store(memory: &mut [i64], address: usize, input: i64) -> Result<usize, Er
         return Err(ErrorKind::NotEnoughParameters);
     }
 
+    let advance_address = address + INSTRUCTION_SIZE;
     let address = address + 1;
+
     let address = memory[address] as usize;
     if address > memory.len() {
         return Err(ErrorKind::AddressOutOfRange(address));
     }
 
     memory[address] = input;
-    Ok(INSTRUCTION_SIZE)
+    Ok(advance_address)
 }
 
 #[cfg(test)]
