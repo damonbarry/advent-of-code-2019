@@ -76,6 +76,21 @@ impl Program {
     }
 }
 
+pub trait System {
+    fn read_memory(&self, address: usize) -> i64;
+    // fn write_memory(&mut self, address: usize, value: i64);
+    // fn read_input(&self) -> i64;
+    // fn write_output(&mut self, value: i64);
+    // fn read_instruction_pointer(&self) -> usize;
+    // fn write_instruction_pointer(&mut self, address: usize);
+}
+
+impl System for Program {
+    fn read_memory(&self, address: usize) -> i64 {
+        self.memory[address]
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 #[fail(
     display = "Encountered an error at address {:?} while running the program",
@@ -420,5 +435,12 @@ mod tests {
 
         assert!(program.run_with_io(|| unreachable!(), out).is_ok());
         assert_eq!(&[104, 77], &program.memory[..]);
+    }
+
+    #[test]
+    fn system_returns_memory_at_address() {
+        let memory = [5, 4, 3];
+        let program = Program::new(&memory);
+        assert_eq!(4, program.read_memory(1));
     }
 }
