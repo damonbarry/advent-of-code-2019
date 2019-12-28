@@ -77,6 +77,7 @@ impl Program {
 }
 
 pub trait System {
+    fn get_memory_len(&self) -> usize;
     fn read_memory(&self, address: usize) -> i64;
     // fn write_memory(&mut self, address: usize, value: i64);
     // fn read_input(&self) -> i64;
@@ -86,6 +87,10 @@ pub trait System {
 }
 
 impl System for Program {
+    fn get_memory_len(&self) -> usize {
+        self.memory.len()
+    }
+
     fn read_memory(&self, address: usize) -> i64 {
         self.memory[address]
     }
@@ -435,6 +440,13 @@ mod tests {
 
         assert!(program.run_with_io(|| unreachable!(), out).is_ok());
         assert_eq!(&[104, 77], &program.memory[..]);
+    }
+
+    #[test]
+    fn system_returns_memory_len() {
+        let memory = [5, 4, 3];
+        let program = Program::new(&memory);
+        assert_eq!(memory.len(), program.get_memory_len());
     }
 
     #[test]
