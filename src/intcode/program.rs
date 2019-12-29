@@ -3,6 +3,8 @@ use super::instruction::{self, Opcode};
 pub struct Program {
     pub memory: Vec<i64>,
     instruction_pointer: usize,
+    input_fn: fn() -> i64,
+    output_fn: fn(i64),
 }
 
 impl Program {
@@ -10,6 +12,18 @@ impl Program {
         Program {
             memory: init.to_vec(),
             instruction_pointer: 0,
+            input_fn: || 0,
+            output_fn: |_| (),
+        }
+    }
+
+    pub fn new_with_io(init: &[i64], input_fn: fn() -> i64, output_fn: fn(i64)) -> Self
+    {
+        Program {
+            memory: init.to_vec(),
+            instruction_pointer: 0,
+            input_fn,
+            output_fn,
         }
     }
 
@@ -82,8 +96,8 @@ pub trait System {
     fn write_memory(&mut self, address: usize, value: i64);
     fn read_instruction_pointer(&self) -> usize;
     fn write_instruction_pointer(&mut self, address: usize);
-    // fn read_input(&self) -> i64;
-    // fn write_output(&mut self, value: i64);
+    fn read_input(&self) -> i64;
+    fn write_output(&mut self, value: i64);
 }
 
 impl System for Program {
@@ -104,8 +118,16 @@ impl System for Program {
     }
 
     fn write_instruction_pointer(&mut self, address: usize) {
-        let _ = self.memory[address]; // will panic if address not in range
+        let _ = self.memory[address]; // panics if address is out of range
         self.instruction_pointer = address;
+    }
+
+    fn read_input(&self) -> i64 {
+        (self.input_fn)()
+    }
+
+    fn write_output(&mut self, value: i64) {
+        (self.output_fn)(value);
     }
 }
 
@@ -507,5 +529,17 @@ mod tests {
         let memory = [5, 4, 3];
         let mut program = Program::new(&memory);
         program.write_instruction_pointer(memory.len());
+    }
+
+    #[test]
+    fn system_reads_a_value_from_input() {
+        let program = Program::new_with_io(&[], || 5_i64, |_| unimplemented!());
+        assert_eq!(5, program.read_input());
+    }
+
+    #[test]
+    fn system_writes_a_value_to_output() {
+        let mut program = Program::new_with_io(&[], || unimplemented!(), |x| assert_eq!(5, x));
+        program.write_output(5);
     }
 }
