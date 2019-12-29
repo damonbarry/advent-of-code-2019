@@ -79,7 +79,7 @@ impl Program {
 pub trait System {
     fn get_memory_len(&self) -> usize;
     fn read_memory(&self, address: usize) -> i64;
-    // fn write_memory(&mut self, address: usize, value: i64);
+    fn write_memory(&mut self, address: usize, value: i64);
     // fn read_input(&self) -> i64;
     // fn write_output(&mut self, value: i64);
     // fn read_instruction_pointer(&self) -> usize;
@@ -93,6 +93,10 @@ impl System for Program {
 
     fn read_memory(&self, address: usize) -> i64 {
         self.memory[address]
+    }
+
+    fn write_memory(&mut self, address: usize, value: i64) {
+        self.memory[address] = value;
     }
 }
 
@@ -454,5 +458,13 @@ mod tests {
         let memory = [5, 4, 3];
         let program = Program::new(&memory);
         assert_eq!(4, program.read_memory(1));
+    }
+
+    #[test]
+    fn system_writes_memory_at_address() {
+        let memory = [5, 4, 3];
+        let mut program = Program::new(&memory);
+        program.write_memory(1, 7);
+        assert_eq!(&[5, 7, 3], &program.memory[..]);
     }
 }
