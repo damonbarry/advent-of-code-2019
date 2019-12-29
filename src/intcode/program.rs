@@ -80,10 +80,10 @@ pub trait System {
     fn get_memory_len(&self) -> usize;
     fn read_memory(&self, address: usize) -> i64;
     fn write_memory(&mut self, address: usize, value: i64);
+    fn read_instruction_pointer(&self) -> usize;
+    fn write_instruction_pointer(&mut self, address: usize);
     // fn read_input(&self) -> i64;
     // fn write_output(&mut self, value: i64);
-    // fn read_instruction_pointer(&self) -> usize;
-    // fn write_instruction_pointer(&mut self, address: usize);
 }
 
 impl System for Program {
@@ -97,6 +97,15 @@ impl System for Program {
 
     fn write_memory(&mut self, address: usize, value: i64) {
         self.memory[address] = value;
+    }
+
+    fn read_instruction_pointer(&self) -> usize {
+        self.instruction_pointer
+    }
+
+    fn write_instruction_pointer(&mut self, address: usize) {
+        let _ = self.memory[address]; // will panic if address not in range
+        self.instruction_pointer = address;
     }
 }
 
@@ -466,5 +475,21 @@ mod tests {
         let mut program = Program::new(&memory);
         program.write_memory(1, 7);
         assert_eq!(&[5, 7, 3], &program.memory[..]);
+    }
+
+    #[test]
+    fn system_updates_instruction_pointer() {
+        let memory = [5, 4, 3];
+        let mut program = Program::new(&memory);
+        program.write_instruction_pointer(2);
+        assert_eq!(2, program.read_instruction_pointer());
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 3 but the index is 3")]
+    fn system_panics_if_updated_instruction_pointer_is_out_of_range() {
+        let memory = [5, 4, 3];
+        let mut program = Program::new(&memory);
+        program.write_instruction_pointer(memory.len());
     }
 }
