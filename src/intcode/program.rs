@@ -470,11 +470,27 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "index out of bounds: the len is 3 but the index is 55")]
+    fn system_panics_when_requested_memory_address_is_out_of_range() {
+        let memory = [5, 4, 3];
+        let program = Program::new(&memory);
+        program.read_memory(55);
+    }
+
+    #[test]
     fn system_writes_memory_at_address() {
         let memory = [5, 4, 3];
         let mut program = Program::new(&memory);
         program.write_memory(1, 7);
         assert_eq!(&[5, 7, 3], &program.memory[..]);
+    }
+
+    #[test]
+    #[should_panic(expected = "index out of bounds: the len is 3 but the index is 4")]
+    fn system_panics_when_asked_to_write_memory_out_of_range() {
+        let memory = [5, 4, 3];
+        let mut program = Program::new(&memory);
+        program.write_memory(4, 0);
     }
 
     #[test]
