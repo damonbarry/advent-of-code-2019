@@ -17,7 +17,7 @@ impl Program {
         }
     }
 
-    pub fn new_with_io(init: &[i64], input_fn: fn() -> i64, output_fn: fn(i64)) -> Self
+    pub fn with_io(init: &[i64], input_fn: fn() -> i64, output_fn: fn(i64)) -> Self
     {
         Program {
             memory: init.to_vec(),
@@ -533,13 +533,13 @@ mod tests {
 
     #[test]
     fn system_reads_a_value_from_input() {
-        let program = Program::new_with_io(&[], || 5_i64, |_| unimplemented!());
+        let program = Program::with_io(&[], || 5_i64, |_| unimplemented!());
         assert_eq!(5, program.read_input());
     }
 
     #[test]
     fn system_writes_a_value_to_output() {
-        let mut program = Program::new_with_io(&[], || unimplemented!(), |x| assert_eq!(5, x));
+        let mut program = Program::with_io(&[], || unimplemented!(), |x| assert_eq!(5, x));
         program.write_output(5);
     }
 }
