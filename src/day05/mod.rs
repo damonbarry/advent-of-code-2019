@@ -11,7 +11,7 @@ mod tests {
             .map(|i| i.parse::<i64>().unwrap())
             .collect();
 
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run_with_io(
             || Ok(1),
             |i| {

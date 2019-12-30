@@ -5,7 +5,7 @@ mod tests {
     #[test]
     fn runs_first_example_program() {
         let memory = [1, 9, 10, 3, 2, 3, 11, 0, 99, 30, 40, 50];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(
@@ -17,7 +17,7 @@ mod tests {
     #[test]
     fn runs_second_example_program() {
         let memory = [1, 0, 0, 0, 99];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[2, 0, 0, 0, 99], &program.memory[..]);
@@ -26,7 +26,7 @@ mod tests {
     #[test]
     fn runs_third_example_program() {
         let memory = [2, 3, 0, 3, 99];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[2, 3, 0, 6, 99], &program.memory[..]);
@@ -35,7 +35,7 @@ mod tests {
     #[test]
     fn runs_fourth_example_program() {
         let memory = [2, 4, 4, 5, 99, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[2, 4, 4, 5, 99, 9801], &program.memory[..]);
@@ -44,7 +44,7 @@ mod tests {
     #[test]
     fn runs_fifth_example_program() {
         let memory = [1, 1, 1, 4, 99, 5, 6, 0, 99];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[30, 1, 1, 4, 2, 5, 6, 0, 99], &program.memory[..]);
@@ -61,7 +61,7 @@ mod tests {
         memory[1] = 12;
         memory[2] = 2;
 
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(8017076, program.memory[0]);
@@ -81,7 +81,7 @@ mod tests {
         //         memory[1] = i;
         //         memory[2] = j;
 
-        //         let mut program = Program::new(memory);
+        //         let mut program = new_program!(memory);
         //         let result = program.run();
         //         assert!(result.is_ok());
 
@@ -97,7 +97,7 @@ mod tests {
         memory[1] = 31;
         memory[2] = 46;
 
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(19690720, program.memory[0]);

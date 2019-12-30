@@ -1,23 +1,18 @@
 use super::instruction::{self, Opcode};
 
-pub struct Program {
+pub struct Program<I, O>
+    where I: Fn() -> i64, O: FnMut(i64)
+{
     pub memory: Vec<i64>,
     instruction_pointer: usize,
-    input_fn: fn() -> i64,
-    output_fn: fn(i64),
+    input_fn: I,
+    output_fn: O,
 }
 
-impl Program {
-    pub fn new(init: &[i64]) -> Self {
-        Program {
-            memory: init.to_vec(),
-            instruction_pointer: 0,
-            input_fn: || 0,
-            output_fn: |_| (),
-        }
-    }
-
-    pub fn with_io(init: &[i64], input_fn: fn() -> i64, output_fn: fn(i64)) -> Self
+impl<T, U> Program<T, U>
+    where T: Fn() -> i64, U: FnMut(i64)
+{
+    pub fn with_io(init: &[i64], input_fn: T, output_fn: U) -> Self
     {
         Program {
             memory: init.to_vec(),
@@ -90,6 +85,13 @@ impl Program {
     }
 }
 
+#[macro_export]
+macro_rules! new_program {
+    ($mem:expr) => {
+        Program::with_io($mem, || unimplemented!(), |_| unimplemented!())
+    };
+}
+
 pub trait System {
     fn get_memory_len(&self) -> usize;
     fn read_memory(&self, address: usize) -> i64;
@@ -100,7 +102,9 @@ pub trait System {
     fn write_output(&mut self, value: i64);
 }
 
-impl System for Program {
+impl<I, O> System for Program<I, O>
+    where I: Fn() -> i64, O: FnMut(i64)
+{
     fn get_memory_len(&self) -> usize {
         self.memory.len()
     }
@@ -183,14 +187,14 @@ mod tests {
     #[test]
     fn can_initialize_program_with_memory() {
         let memory = [1, 2, 3];
-        let program = Program::new(&memory);
+        let program = new_program!(&memory);
         assert_eq!(memory, program.memory[..]);
     }
 
     #[test]
     fn runs_an_empty_program() {
         let memory = [];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&memory, &program.memory[..]);
     }
@@ -198,7 +202,7 @@ mod tests {
     #[test]
     fn fails_to_run_program_with_invalid_opcode() {
         let memory = [1, 5, 6, 7, 5555, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::InvalidOpcode, 4)),
@@ -209,7 +213,7 @@ mod tests {
     #[test]
     fn fails_add_when_first_input_position_is_out_of_range() {
         let memory = [1, 5555, 6, 7, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -223,7 +227,7 @@ mod tests {
     #[test]
     fn fails_add_when_second_input_position_is_out_of_range() {
         let memory = [1, 5, 5555, 7, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -237,7 +241,7 @@ mod tests {
     #[test]
     fn fails_add_when_output_position_is_out_of_range() {
         let memory = [1, 5, 6, 5555, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -251,7 +255,7 @@ mod tests {
     #[test]
     fn fails_add_when_there_are_not_enough_parameters() {
         let memory = [1, 5, 6];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
@@ -262,7 +266,7 @@ mod tests {
     #[test]
     fn adds_when_both_parameters_are_in_position_mode() {
         let memory = [1, 5, 6, 0, 99, 10, 20];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[30, 5, 6, 0, 99, 10, 20], &program.memory[..]);
     }
@@ -270,7 +274,7 @@ mod tests {
     #[test]
     fn adds_when_first_parameter_is_in_immediate_mode() {
         let memory = [101, 10, 5, 0, 99, 20];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[30, 10, 5, 0, 99, 20], &program.memory[..]);
     }
@@ -278,7 +282,7 @@ mod tests {
     #[test]
     fn adds_when_second_parameter_is_in_immediate_mode() {
         let memory = [1001, 5, 20, 0, 99, 10];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[30, 5, 20, 0, 99, 10], &program.memory[..]);
     }
@@ -286,7 +290,7 @@ mod tests {
     #[test]
     fn adds_when_both_parameters_are_in_immediate_mode() {
         let memory = [1101, 10, 20, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[30, 10, 20, 0], &program.memory[..]);
     }
@@ -294,7 +298,7 @@ mod tests {
     #[test]
     fn adds_negative_parameter_in_immediate_mode() {
         let memory = [1101, 100, -1, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[99, 100, -1, 0], &program.memory[..]);
@@ -303,7 +307,7 @@ mod tests {
     #[test]
     fn fails_multiply_when_first_input_position_is_out_of_range() {
         let memory = [2, 5555, 6, 7, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -317,7 +321,7 @@ mod tests {
     #[test]
     fn fails_mulitply_when_second_input_position_is_out_of_range() {
         let memory = [2, 5, 5555, 7, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -331,7 +335,7 @@ mod tests {
     #[test]
     fn fails_multiply_when_output_position_is_out_of_range() {
         let memory = [2, 5, 6, 5555, 99, 3, 7, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -345,7 +349,7 @@ mod tests {
     #[test]
     fn fails_multiply_when_there_are_not_enough_parameters() {
         let memory = [2, 5, 6];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
@@ -356,7 +360,7 @@ mod tests {
     #[test]
     fn multiplies_when_both_parameters_are_in_position_mode() {
         let memory = [2, 5, 6, 0, 99, 10, 20];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[200, 5, 6, 0, 99, 10, 20], &program.memory[..]);
     }
@@ -364,7 +368,7 @@ mod tests {
     #[test]
     fn multiplies_when_first_parameter_is_in_immediate_mode() {
         let memory = [102, 10, 5, 0, 99, 20];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[200, 10, 5, 0, 99, 20], &program.memory[..]);
     }
@@ -372,7 +376,7 @@ mod tests {
     #[test]
     fn multiplies_when_second_parameter_is_in_immediate_mode() {
         let memory = [1002, 5, 20, 0, 99, 10];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[200, 5, 20, 0, 99, 10], &program.memory[..]);
     }
@@ -380,7 +384,7 @@ mod tests {
     #[test]
     fn multiplies_when_both_parameters_are_in_immediate_mode() {
         let memory = [1102, 10, 20, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[200, 10, 20, 0], &program.memory[..]);
     }
@@ -388,7 +392,7 @@ mod tests {
     #[test]
     fn fails_store_when_output_position_is_out_of_range() {
         let memory = [3, 5555];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run_with_io(|| Ok(0), |_| unreachable!());
         assert_eq!(
             Err(Error::new(
@@ -402,7 +406,7 @@ mod tests {
     #[test]
     fn fails_store_when_there_are_not_enough_parameters() {
         let memory = [3];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run_with_io(|| Ok(0), |_| unreachable!());
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
@@ -413,7 +417,7 @@ mod tests {
     #[test]
     fn understands_store() {
         let memory = [3, 3, 99, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run_with_io(|| Ok(77), |_| unreachable!()).is_ok());
         assert_eq!(&[3, 3, 99, 77], &program.memory[..]);
     }
@@ -421,7 +425,7 @@ mod tests {
     #[test]
     fn understands_halt() {
         let memory = [99, 1101, 10, 20, 0];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[99, 1101, 10, 20, 0], &program.memory[..]);
     }
@@ -429,7 +433,7 @@ mod tests {
     #[test]
     fn fails_print_when_input_position_is_out_of_range() {
         let memory = [4, 5555];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(
@@ -443,7 +447,7 @@ mod tests {
     #[test]
     fn fails_print_when_there_are_not_enough_parameters() {
         let memory = [4];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let result = program.run();
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
@@ -454,7 +458,7 @@ mod tests {
     #[test]
     fn prints_when_parameter_is_in_position_mode() {
         let memory = [4, 3, 99, 77];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let out = |i| {
             assert_eq!(77, i);
             Ok(())
@@ -467,7 +471,7 @@ mod tests {
     #[test]
     fn prints_when_parameter_is_in_immediate_mode() {
         let memory = [104, 77];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         let out = |i| {
             assert_eq!(77, i);
             Ok(())
@@ -480,14 +484,14 @@ mod tests {
     #[test]
     fn system_returns_memory_len() {
         let memory = [5, 4, 3];
-        let program = Program::new(&memory);
+        let program = new_program!(&memory);
         assert_eq!(memory.len(), program.get_memory_len());
     }
 
     #[test]
     fn system_returns_memory_at_address() {
         let memory = [5, 4, 3];
-        let program = Program::new(&memory);
+        let program = new_program!(&memory);
         assert_eq!(4, program.read_memory(1));
     }
 
@@ -495,14 +499,14 @@ mod tests {
     #[should_panic(expected = "index out of bounds: the len is 3 but the index is 55")]
     fn system_panics_when_requested_memory_address_is_out_of_range() {
         let memory = [5, 4, 3];
-        let program = Program::new(&memory);
+        let program = new_program!(&memory);
         program.read_memory(55);
     }
 
     #[test]
     fn system_writes_memory_at_address() {
         let memory = [5, 4, 3];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         program.write_memory(1, 7);
         assert_eq!(&[5, 7, 3], &program.memory[..]);
     }
@@ -511,14 +515,14 @@ mod tests {
     #[should_panic(expected = "index out of bounds: the len is 3 but the index is 4")]
     fn system_panics_when_asked_to_write_memory_out_of_range() {
         let memory = [5, 4, 3];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         program.write_memory(4, 0);
     }
 
     #[test]
     fn system_updates_instruction_pointer() {
         let memory = [5, 4, 3];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         program.write_instruction_pointer(2);
         assert_eq!(2, program.read_instruction_pointer());
     }
@@ -527,7 +531,7 @@ mod tests {
     #[should_panic(expected = "index out of bounds: the len is 3 but the index is 3")]
     fn system_panics_if_updated_instruction_pointer_is_out_of_range() {
         let memory = [5, 4, 3];
-        let mut program = Program::new(&memory);
+        let mut program = new_program!(&memory);
         program.write_instruction_pointer(memory.len());
     }
 
