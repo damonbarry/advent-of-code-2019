@@ -11,15 +11,8 @@ mod tests {
             .map(|i| i.parse::<i64>().unwrap())
             .collect();
 
-        let mut program = new_program!(&memory);
-        let result = program.run_with_io(
-            || Ok(1),
-            |i| {
-                output.push(i);
-                Ok(())
-            },
-        );
-        assert!(result.is_ok());
+        let mut program = Program::with_io(&memory, || 1, |i| output.push(i));
+        assert!(program.run().is_ok());
         let (left, right) = output.split_at(output.len() - 1);
         assert!(left.iter().all(|i| *i == 0));
         assert_eq!(12428642, *right.last().unwrap());

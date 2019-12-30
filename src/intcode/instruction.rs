@@ -83,9 +83,8 @@ macro_rules! instruction {
         parameters: [ $( $param:path ),* ],
         execute: $execute:expr,
     ) => {
-        pub fn $name(
-            memory: &mut [i64],
-            address: usize,
+        pub fn $name<T: super::program::System>(
+            system: &mut T,
             read_modes: &[ParameterMode],
         ) -> Result<usize, ErrorKind> {
             const PARAMETER_TYPES: &[ParameterType] = &[ $($param),* ];
@@ -96,7 +95,8 @@ macro_rules! instruction {
                 return Err(ErrorKind::ReadModeMismatch(count_read_params, read_modes.len()));
             }
 
-            if address + INSTRUCTION_SIZE > memory.len() {
+            let address = system.read_instruction_pointer();
+            if address + INSTRUCTION_SIZE > system.get_memory_len() {
                 return Err(ErrorKind::NotEnoughParameters);
             }
 
@@ -112,19 +112,19 @@ macro_rules! instruction {
                         let mode = *read_iter.next().expect("Read modes don't align with actual parameters");
                         match mode {
                             ParameterMode::Position => {
-                                let address = memory[address + index] as usize;
-                                if address > memory.len() {
+                                let address = system.read_memory(address + index) as usize;
+                                if address > system.get_memory_len() {
                                     return Err(ErrorKind::AddressOutOfRange(address));
                                 } else {
-                                    read_params.push(memory[address]);
+                                    read_params.push(system.read_memory(address));
                                 }
                             }
-                            ParameterMode::Immediate => read_params.push(memory[address + index]),
+                            ParameterMode::Immediate => read_params.push(system.read_memory(address + index)),
                         };
                     }
                     ParameterType::Write => {
-                        let address = memory[address + index] as usize;
-                        if address > memory.len() {
+                        let address = system.read_memory(address + index) as usize;
+                        if address > system.get_memory_len() {
                             return Err(ErrorKind::AddressOutOfRange(address));
                         }
                         write_addrs.push(address);
@@ -136,7 +136,7 @@ macro_rules! instruction {
             $execute(read_params, &mut results);
 
             for (address, value) in write_addrs.iter().zip(results) {
-                memory[*address] = value;
+                system.write_memory(*address, value);
             }
 
             Ok(advance_address)
@@ -156,52 +156,56 @@ instruction! {
     execute: |read_params: Vec<i64>, write_params: &mut Vec<i64>| write_params[0] = read_params[0] * read_params[1],
 }
 
-pub fn print(
-    memory: &mut [i64],
-    address: usize,
+pub fn print<T: super::program::System>(
+    system: &mut T,
     read_mode: ParameterMode,
-    out_value: &mut i64,
 ) -> Result<usize, ErrorKind> {
     const INSTRUCTION_SIZE: usize = 2;
 
-    if address + INSTRUCTION_SIZE > memory.len() {
+    let address = system.read_instruction_pointer();
+
+    if address + INSTRUCTION_SIZE > system.get_memory_len() {
         return Err(ErrorKind::NotEnoughParameters);
     }
 
     let advance_address = address + INSTRUCTION_SIZE;
     let address = address + 1;
 
-    *out_value = match read_mode {
+    let value = match read_mode {
         ParameterMode::Position => {
-            let address = memory[address] as usize;
-            if address > memory.len() {
+            let address = system.read_memory(address) as usize;
+            if address > system.get_memory_len() {
                 Err(ErrorKind::AddressOutOfRange(address))
             } else {
-                Ok(memory[address])
+                Ok(system.read_memory(address))
             }
         }
-        ParameterMode::Immediate => Ok(memory[address]),
+        ParameterMode::Immediate => Ok(system.read_memory(address)),
     }?;
+
+    system.write_output(value);
 
     Ok(advance_address)
 }
 
-pub fn store(memory: &mut [i64], address: usize, input: i64) -> Result<usize, ErrorKind> {
+pub fn store<T: super::program::System>(system: &mut T) -> Result<usize, ErrorKind> {
     const INSTRUCTION_SIZE: usize = 2;
 
-    if address + INSTRUCTION_SIZE > memory.len() {
+    let address = system.read_instruction_pointer();
+
+    if address + INSTRUCTION_SIZE > system.get_memory_len() {
         return Err(ErrorKind::NotEnoughParameters);
     }
 
     let advance_address = address + INSTRUCTION_SIZE;
     let address = address + 1;
 
-    let address = memory[address] as usize;
-    if address > memory.len() {
+    let address = system.read_memory(address) as usize;
+    if address > system.get_memory_len() {
         return Err(ErrorKind::AddressOutOfRange(address));
     }
 
-    memory[address] = input;
+    system.write_memory(address, system.read_input());
     Ok(advance_address)
 }
 

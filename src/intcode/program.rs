@@ -26,14 +26,6 @@ where
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.run_with_io(|| unimplemented!(), |_| unimplemented!())
-    }
-
-    pub fn run_with_io<I: Fn() -> Result<i64, Error>, O: FnMut(i64) -> Result<(), Error>>(
-        &mut self,
-        input_func: I,
-        mut output_func: O,
-    ) -> Result<(), Error> {
         if self.memory.is_empty() {
             return Ok(());
         }
@@ -44,37 +36,19 @@ where
 
             {
                 let advance_address = match opcode {
-                    Opcode::Addition { param1, param2 } => instruction::add(
-                        &mut self.memory,
-                        self.instruction_pointer,
-                        &[param1, param2],
-                    )
-                    .address(self.instruction_pointer)?,
-                    Opcode::Halt => return Ok(()),
-                    Opcode::Multiplication { param1, param2 } => instruction::multiply(
-                        &mut self.memory,
-                        self.instruction_pointer,
-                        &[param1, param2],
-                    )
-                    .address(self.instruction_pointer)?,
-                    Opcode::Print { param } => {
-                        let mut value: i64 = 0;
-                        let advance_address = instruction::print(
-                            &mut self.memory,
-                            self.instruction_pointer,
-                            param,
-                            &mut value,
-                        )
-                        .address(self.instruction_pointer)?;
-                        output_func(value).address(self.instruction_pointer)?;
-                        advance_address
+                    Opcode::Addition { param1, param2 } => {
+                        instruction::add(self, &[param1, param2])
+                            .address(self.instruction_pointer)?
                     }
-                    Opcode::Store => instruction::store(
-                        &mut self.memory,
-                        self.instruction_pointer,
-                        input_func().address(self.instruction_pointer)?,
-                    )
-                    .address(self.instruction_pointer)?,
+                    Opcode::Halt => return Ok(()),
+                    Opcode::Multiplication { param1, param2 } => {
+                        instruction::multiply(self, &[param1, param2])
+                            .address(self.instruction_pointer)?
+                    }
+                    Opcode::Print { param } => {
+                        instruction::print(self, param).address(self.instruction_pointer)?
+                    }
+                    Opcode::Store => instruction::store(self).address(self.instruction_pointer)?,
                 };
 
                 self.instruction_pointer = advance_address;
@@ -397,33 +371,31 @@ mod tests {
     #[test]
     fn fails_store_when_output_position_is_out_of_range() {
         let memory = [3, 5555];
-        let mut program = new_program!(&memory);
-        let result = program.run_with_io(|| Ok(0), |_| unreachable!());
+        let mut program = Program::with_io(&memory, || 0, |_| unreachable!());
         assert_eq!(
             Err(Error::new(
                 instruction::ErrorKind::AddressOutOfRange(5555),
                 0
             )),
-            result
+            program.run()
         );
     }
 
     #[test]
     fn fails_store_when_there_are_not_enough_parameters() {
         let memory = [3];
-        let mut program = new_program!(&memory);
-        let result = program.run_with_io(|| Ok(0), |_| unreachable!());
+        let mut program = Program::with_io(&memory, || 0, |_| unreachable!());
         assert_eq!(
             Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
-            result
+            program.run()
         );
     }
 
     #[test]
     fn understands_store() {
         let memory = [3, 3, 99, 0];
-        let mut program = new_program!(&memory);
-        assert!(program.run_with_io(|| Ok(77), |_| unreachable!()).is_ok());
+        let mut program = Program::with_io(&memory, || 77, |_| unreachable!());
+        assert!(program.run().is_ok());
         assert_eq!(&[3, 3, 99, 77], &program.memory[..]);
     }
 
@@ -463,26 +435,16 @@ mod tests {
     #[test]
     fn prints_when_parameter_is_in_position_mode() {
         let memory = [4, 3, 99, 77];
-        let mut program = new_program!(&memory);
-        let out = |i| {
-            assert_eq!(77, i);
-            Ok(())
-        };
-
-        assert!(program.run_with_io(|| unreachable!(), out).is_ok());
+        let mut program = Program::with_io(&memory, || unreachable!(), |i| assert_eq!(77, i));
+        assert!(program.run().is_ok());
         assert_eq!(&[4, 3, 99, 77], &program.memory[..]);
     }
 
     #[test]
     fn prints_when_parameter_is_in_immediate_mode() {
         let memory = [104, 77];
-        let mut program = new_program!(&memory);
-        let out = |i| {
-            assert_eq!(77, i);
-            Ok(())
-        };
-
-        assert!(program.run_with_io(|| unreachable!(), out).is_ok());
+        let mut program = Program::with_io(&memory, || unreachable!(), |i| assert_eq!(77, i));
+        assert!(program.run().is_ok());
         assert_eq!(&[104, 77], &program.memory[..]);
     }
 
