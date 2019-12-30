@@ -1,7 +1,9 @@
 use super::instruction::{self, Opcode};
 
 pub struct Program<I, O>
-    where I: Fn() -> i64, O: FnMut(i64)
+where
+    I: Fn() -> i64,
+    O: FnMut(i64),
 {
     pub memory: Vec<i64>,
     instruction_pointer: usize,
@@ -10,10 +12,11 @@ pub struct Program<I, O>
 }
 
 impl<T, U> Program<T, U>
-    where T: Fn() -> i64, U: FnMut(i64)
+where
+    T: Fn() -> i64,
+    U: FnMut(i64),
 {
-    pub fn with_io(init: &[i64], input_fn: T, output_fn: U) -> Self
-    {
+    pub fn with_io(init: &[i64], input_fn: T, output_fn: U) -> Self {
         Program {
             memory: init.to_vec(),
             instruction_pointer: 0,
@@ -103,7 +106,9 @@ pub trait System {
 }
 
 impl<I, O> System for Program<I, O>
-    where I: Fn() -> i64, O: FnMut(i64)
+where
+    I: Fn() -> i64,
+    O: FnMut(i64),
 {
     fn get_memory_len(&self) -> usize {
         self.memory.len()
@@ -546,6 +551,6 @@ mod tests {
         let mut actual: i64 = 0;
         let mut program = Program::with_io(&[], || unimplemented!(), |x| actual = x);
         program.write_output(5);
-        assert_eq!(5, actual)
+        assert_eq!(5, actual);
     }
 }
