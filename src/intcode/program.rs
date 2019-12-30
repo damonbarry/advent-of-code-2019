@@ -543,7 +543,9 @@ mod tests {
 
     #[test]
     fn system_writes_a_value_to_output() {
-        let mut program = Program::with_io(&[], || unimplemented!(), |x| assert_eq!(5, x));
+        let mut actual: i64 = 0;
+        let mut program = Program::with_io(&[], || unimplemented!(), |x| actual = x);
         program.write_output(5);
+        assert_eq!(5, actual)
     }
 }
