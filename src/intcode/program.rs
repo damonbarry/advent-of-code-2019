@@ -11,12 +11,12 @@ where
     output_fn: O,
 }
 
-impl<T, U> Program<T, U>
+impl<I, O> Program<I, O>
 where
-    T: Fn() -> i64,
-    U: FnMut(i64),
+    I: Fn() -> i64,
+    O: FnMut(i64),
 {
-    pub fn with_io(init: &[i64], input_fn: T, output_fn: U) -> Self {
+    pub fn with_io(init: &[i64], input_fn: I, output_fn: O) -> Self {
         Program {
             memory: init.to_vec(),
             instruction_pointer: 0,
