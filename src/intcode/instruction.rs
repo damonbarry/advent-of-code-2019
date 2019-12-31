@@ -205,10 +205,7 @@ mod tests {
                 },
                 Opcode::parse(1).unwrap()
             );
-        }
 
-        #[test]
-        fn can_parse_addition_with_first_immediate_parameter() {
             assert_eq!(
                 Opcode::Addition {
                     param1: ParameterMode::Immediate,
@@ -216,10 +213,7 @@ mod tests {
                 },
                 Opcode::parse(101).unwrap()
             );
-        }
 
-        #[test]
-        fn can_parse_addition_with_second_immediate_parameter() {
             assert_eq!(
                 Opcode::Addition {
                     param1: ParameterMode::Position,
@@ -227,10 +221,7 @@ mod tests {
                 },
                 Opcode::parse(1001).unwrap()
             );
-        }
 
-        #[test]
-        fn can_parse_addition_with_immediate_parameters() {
             assert_eq!(
                 Opcode::Addition {
                     param1: ParameterMode::Immediate,
@@ -238,6 +229,68 @@ mod tests {
                 },
                 Opcode::parse(1101).unwrap()
             );
+        }
+
+        #[test]
+        fn can_parse_halt() {
+            assert_eq!(Opcode::Halt, Opcode::parse(99).unwrap());
+        }
+
+        #[test]
+        fn can_parse_multiply() {
+            assert_eq!(
+                Opcode::Multiplication {
+                    param1: ParameterMode::Position,
+                    param2: ParameterMode::Position
+                },
+                Opcode::parse(2).unwrap()
+            );
+
+            assert_eq!(
+                Opcode::Multiplication {
+                    param1: ParameterMode::Immediate,
+                    param2: ParameterMode::Position
+                },
+                Opcode::parse(102).unwrap()
+            );
+
+            assert_eq!(
+                Opcode::Multiplication {
+                    param1: ParameterMode::Position,
+                    param2: ParameterMode::Immediate,
+                },
+                Opcode::parse(1002).unwrap()
+            );
+
+            assert_eq!(
+                Opcode::Multiplication {
+                    param1: ParameterMode::Immediate,
+                    param2: ParameterMode::Immediate,
+                },
+                Opcode::parse(1102).unwrap()
+            );
+        }
+
+        #[test]
+        fn can_parse_print() {
+            assert_eq!(
+                Opcode::Print {
+                    param: ParameterMode::Position,
+                },
+                Opcode::parse(4).unwrap()
+            );
+
+            assert_eq!(
+                Opcode::Print {
+                    param: ParameterMode::Immediate,
+                },
+                Opcode::parse(104).unwrap()
+            );
+        }
+
+        #[test]
+        fn can_parse_store() {
+            assert_eq!(Opcode::Store, Opcode::parse(3).unwrap());
         }
     }
 }
