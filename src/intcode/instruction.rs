@@ -77,83 +77,101 @@ pub enum ParameterType {
     Write,
 }
 
-macro_rules! instruction {
-    (
-        name: $name:ident,
-        parameters: [ $( $param:path ),* ],
-        execute: $execute:expr,
-    ) => {
-        pub fn $name<T: super::program::System>(
-            system: &mut T,
-            read_modes: &[ParameterMode],
-        ) -> Result<usize, ErrorKind> {
-            const PARAMETER_TYPES: &[ParameterType] = &[ $($param),* ];
-            const INSTRUCTION_SIZE: usize = 1 + PARAMETER_TYPES.len();
+fn process_parameters<T: super::program::System>(
+    system: &T,
+    param_types: &[ParameterType],
+    read_modes: &[ParameterMode],
+) -> Result<(Vec<i64>, Vec<usize>), ErrorKind> {
+    let instruction_size = 1 + param_types.len();
+    let count_read_params = param_types
+        .iter()
+        .filter(|ty| **ty == ParameterType::Read)
+        .count();
 
-            let count_read_params = PARAMETER_TYPES.iter().filter(|ty| **ty == ParameterType::Read).count();
-            if read_modes.len() != count_read_params {
-                return Err(ErrorKind::ReadModeMismatch(count_read_params, read_modes.len()));
-            }
+    if read_modes.len() != count_read_params {
+        return Err(ErrorKind::ReadModeMismatch(
+            count_read_params,
+            read_modes.len(),
+        ));
+    }
 
-            let address = system.read_instruction_pointer();
-            if address + INSTRUCTION_SIZE > system.get_memory_len() {
-                return Err(ErrorKind::NotEnoughParameters);
-            }
+    let address = system.read_instruction_pointer();
+    if address + instruction_size > system.get_memory_len() {
+        return Err(ErrorKind::NotEnoughParameters);
+    }
 
-            let advance_address = address + INSTRUCTION_SIZE;
-            let address = address + 1; // skip over opcode to the 1st param
+    let address = address + 1; // skip over opcode to the 1st param
 
-            let mut read_iter = read_modes.iter();
-            let mut read_params = Vec::<i64>::new();
-            let mut write_addrs = Vec::<usize>::new();
-            for (index, param) in PARAMETER_TYPES.iter().enumerate() {
-                match param {
-                    ParameterType::Read => {
-                        let mode = *read_iter.next().expect("Read modes don't align with actual parameters");
-                        match mode {
-                            ParameterMode::Position => {
-                                let address = system.read_memory(address + index) as usize;
-                                if address > system.get_memory_len() {
-                                    return Err(ErrorKind::AddressOutOfRange(address));
-                                } else {
-                                    read_params.push(system.read_memory(address));
-                                }
-                            }
-                            ParameterMode::Immediate => read_params.push(system.read_memory(address + index)),
-                        };
-                    }
-                    ParameterType::Write => {
+    let mut read_iter = read_modes.iter();
+    let mut read_values = Vec::<i64>::new();
+    let mut write_addrs = Vec::<usize>::new();
+    for (index, param) in param_types.iter().enumerate() {
+        match param {
+            ParameterType::Read => {
+                let mode = *read_iter
+                    .next()
+                    .expect("Read modes don't align with actual parameters");
+                match mode {
+                    ParameterMode::Position => {
                         let address = system.read_memory(address + index) as usize;
                         if address > system.get_memory_len() {
                             return Err(ErrorKind::AddressOutOfRange(address));
+                        } else {
+                            read_values.push(system.read_memory(address));
                         }
-                        write_addrs.push(address);
                     }
+                    ParameterMode::Immediate => {
+                        read_values.push(system.read_memory(address + index))
+                    }
+                };
+            }
+            ParameterType::Write => {
+                let address = system.read_memory(address + index) as usize;
+                if address > system.get_memory_len() {
+                    return Err(ErrorKind::AddressOutOfRange(address));
                 }
+                write_addrs.push(address);
             }
-
-            let mut results = vec![0; write_addrs.len()];
-            $execute(read_params, &mut results);
-
-            for (address, value) in write_addrs.iter().zip(results) {
-                system.write_memory(*address, value);
-            }
-
-            Ok(advance_address)
         }
-    };
+    }
+
+    Ok((read_values, write_addrs))
 }
 
-instruction! {
-    name: add,
-    parameters: [ParameterType::Read, ParameterType::Read, ParameterType::Write],
-    execute: |read_params: Vec<i64>, write_params: &mut Vec<i64>| write_params[0] = read_params[0] + read_params[1],
+pub fn add<T: super::program::System>(
+    system: &mut T,
+    read_modes: &[ParameterMode],
+) -> Result<usize, ErrorKind> {
+    const INSTRUCTION_SIZE: usize = 4;
+    let (read_values, write_addrs) = process_parameters(
+        system,
+        &[
+            ParameterType::Read,
+            ParameterType::Read,
+            ParameterType::Write,
+        ],
+        read_modes,
+    )?;
+    system.write_memory(write_addrs[0], read_values[0] + read_values[1]);
+    Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }
 
-instruction! {
-    name: multiply,
-    parameters: [ParameterType::Read, ParameterType::Read, ParameterType::Write],
-    execute: |read_params: Vec<i64>, write_params: &mut Vec<i64>| write_params[0] = read_params[0] * read_params[1],
+pub fn multiply<T: super::program::System>(
+    system: &mut T,
+    read_modes: &[ParameterMode],
+) -> Result<usize, ErrorKind> {
+    const INSTRUCTION_SIZE: usize = 4;
+    let (read_values, write_addrs) = process_parameters(
+        system,
+        &[
+            ParameterType::Read,
+            ParameterType::Read,
+            ParameterType::Write,
+        ],
+        read_modes,
+    )?;
+    system.write_memory(write_addrs[0], read_values[0] * read_values[1]);
+    Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }
 
 pub fn print<T: super::program::System>(
@@ -161,52 +179,16 @@ pub fn print<T: super::program::System>(
     read_mode: ParameterMode,
 ) -> Result<usize, ErrorKind> {
     const INSTRUCTION_SIZE: usize = 2;
-
-    let address = system.read_instruction_pointer();
-
-    if address + INSTRUCTION_SIZE > system.get_memory_len() {
-        return Err(ErrorKind::NotEnoughParameters);
-    }
-
-    let advance_address = address + INSTRUCTION_SIZE;
-    let address = address + 1;
-
-    let value = match read_mode {
-        ParameterMode::Position => {
-            let address = system.read_memory(address) as usize;
-            if address > system.get_memory_len() {
-                Err(ErrorKind::AddressOutOfRange(address))
-            } else {
-                Ok(system.read_memory(address))
-            }
-        }
-        ParameterMode::Immediate => Ok(system.read_memory(address)),
-    }?;
-
-    system.write_output(value);
-
-    Ok(advance_address)
+    let (read_values, _) = process_parameters(system, &[ParameterType::Read], &[read_mode])?;
+    system.write_output(read_values[0]);
+    Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }
 
 pub fn store<T: super::program::System>(system: &mut T) -> Result<usize, ErrorKind> {
     const INSTRUCTION_SIZE: usize = 2;
-
-    let address = system.read_instruction_pointer();
-
-    if address + INSTRUCTION_SIZE > system.get_memory_len() {
-        return Err(ErrorKind::NotEnoughParameters);
-    }
-
-    let advance_address = address + INSTRUCTION_SIZE;
-    let address = address + 1;
-
-    let address = system.read_memory(address) as usize;
-    if address > system.get_memory_len() {
-        return Err(ErrorKind::AddressOutOfRange(address));
-    }
-
-    system.write_memory(address, system.read_input());
-    Ok(advance_address)
+    let (_, write_addrs) = process_parameters(system, &[ParameterType::Write], &[])?;
+    system.write_memory(write_addrs[0], system.read_input());
+    Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }
 
 #[cfg(test)]
