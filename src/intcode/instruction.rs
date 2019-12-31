@@ -293,4 +293,117 @@ mod tests {
             assert_eq!(Opcode::Store, Opcode::parse(3).unwrap());
         }
     }
+
+    mod instruction {
+        use super::super::{*, super::program::System};
+
+        const DUMMY_OPCODE: i64 = 88;
+
+        fn test<T: System>(
+            system: &mut T,
+            read_modes: &[ParameterMode],
+        ) -> Result<(Vec<i64>, Vec<usize>), ErrorKind> {
+            process_parameters(
+                system,
+                &[
+                    ParameterType::Read,
+                    ParameterType::Write,
+                    ParameterType::Read,
+                    ParameterType::Write,
+                ],
+                read_modes,
+            )
+        }        
+
+        struct TestSystem {
+            pub memory: Vec<i64>,
+        }
+
+        impl System for TestSystem
+        {
+            fn get_memory_len(&self) -> usize { self.memory.len() }
+            fn read_memory(&self, address: usize) -> i64 { self.memory[address] }
+            fn read_instruction_pointer(&self) -> usize { 0 }
+
+            fn read_input(&self) -> i64 { unimplemented!() }
+            fn write_memory(&mut self, _: usize, _: i64) { unimplemented!() }
+            fn write_instruction_pointer(&mut self, _: usize) { unimplemented!() }
+            fn write_output(&mut self, _: i64) { unimplemented!() }
+        }
+
+        #[test]
+        fn parsing_fails_when_first_input_position_is_out_of_range() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5555, 6, 7, 8, 10, 20, 30, 40],
+            };
+
+            assert_eq!(
+                Err(ErrorKind::AddressOutOfRange(5555)),
+                test(&mut system, &[ParameterMode::Position, ParameterMode::Position])
+            );
+        }
+    
+        #[test]
+        fn parsing_fails_when_second_input_position_is_out_of_range() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5, 5555, 7, 8, 10, 20, 30, 40],
+            };
+
+            assert_eq!(
+                Err(ErrorKind::AddressOutOfRange(5555)),
+                test(&mut system, &[ParameterMode::Position, ParameterMode::Position])
+            );
+        }
+    
+        #[test]
+        fn parsing_fails_when_first_output_position_is_out_of_range() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5, 6, 5555, 8, 10, 20, 30, 40],
+            };
+
+            assert_eq!(
+                Err(ErrorKind::AddressOutOfRange(5555)),
+                test(&mut system, &[ParameterMode::Position, ParameterMode::Position])
+            );
+        }
+    
+        #[test]
+        fn parsing_fails_when_second_output_position_is_out_of_range() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5, 6, 7, 5555, 10, 20, 30, 40],
+            };
+
+            assert_eq!(
+                Err(ErrorKind::AddressOutOfRange(5555)),
+                test(&mut system, &[ParameterMode::Position, ParameterMode::Position])
+            );
+        }
+
+        #[test]
+        fn parsing_fails_when_there_are_not_enough_parameters() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5, 6, 7],
+            };
+
+            assert_eq!(
+                Err(ErrorKind::NotEnoughParameters),
+                test(&mut system, &[ParameterMode::Position, ParameterMode::Position])
+            );
+        }
+
+        #[test]
+        fn parsing_position_parameters_yields_the_right_values() {
+            let mut system = TestSystem {
+                memory: vec![DUMMY_OPCODE, 5, 6, 7, 8, 10, 20, 30, 40],
+            };
+
+            let result = test(&mut system, &[ParameterMode::Position, ParameterMode::Position]);
+            assert!(result.is_ok());
+
+            let (read_values, write_addrs) = result.unwrap();
+
+            assert_eq!(&[10, 30], &read_values[..]);
+            assert_eq!(&[6, 8], &write_addrs[..]);
+        }
+    }
 }

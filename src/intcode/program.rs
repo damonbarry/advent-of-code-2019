@@ -189,58 +189,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn fails_add_when_first_input_position_is_out_of_range() {
-        let memory = [1, 5555, 6, 7, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_add_when_second_input_position_is_out_of_range() {
-        let memory = [1, 5, 5555, 7, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_add_when_output_position_is_out_of_range() {
-        let memory = [1, 5, 6, 5555, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_add_when_there_are_not_enough_parameters() {
-        let memory = [1, 5, 6];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
-            result
-        );
-    }
+    // TODO: test that Errors are enriched with the right instruction pointer address
 
     #[test]
     fn adds_when_both_parameters_are_in_position_mode() {
@@ -284,59 +233,6 @@ mod tests {
     }
 
     #[test]
-    fn fails_multiply_when_first_input_position_is_out_of_range() {
-        let memory = [2, 5555, 6, 7, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_mulitply_when_second_input_position_is_out_of_range() {
-        let memory = [2, 5, 5555, 7, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_multiply_when_output_position_is_out_of_range() {
-        let memory = [2, 5, 6, 5555, 99, 3, 7, 0];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_multiply_when_there_are_not_enough_parameters() {
-        let memory = [2, 5, 6];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
-            result
-        );
-    }
-
-    #[test]
     fn multiplies_when_both_parameters_are_in_position_mode() {
         let memory = [2, 5, 6, 0, 99, 10, 20];
         let mut program = new_program!(&memory);
@@ -369,30 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn fails_store_when_output_position_is_out_of_range() {
-        let memory = [3, 5555];
-        let mut program = Program::with_io(&memory, || 0, |_| unreachable!());
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            program.run()
-        );
-    }
-
-    #[test]
-    fn fails_store_when_there_are_not_enough_parameters() {
-        let memory = [3];
-        let mut program = Program::with_io(&memory, || 0, |_| unreachable!());
-        assert_eq!(
-            Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
-            program.run()
-        );
-    }
-
-    #[test]
-    fn understands_store() {
+    fn stores_input_value() {
         let memory = [3, 3, 99, 0];
         let mut program = Program::with_io(&memory, || 77, |_| unreachable!());
         assert!(program.run().is_ok());
@@ -400,36 +273,11 @@ mod tests {
     }
 
     #[test]
-    fn understands_halt() {
+    fn halts_the_program() {
         let memory = [99, 1101, 10, 20, 0];
         let mut program = new_program!(&memory);
         assert!(program.run().is_ok());
         assert_eq!(&[99, 1101, 10, 20, 0], &program.memory[..]);
-    }
-
-    #[test]
-    fn fails_print_when_input_position_is_out_of_range() {
-        let memory = [4, 5555];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(
-                instruction::ErrorKind::AddressOutOfRange(5555),
-                0
-            )),
-            result
-        );
-    }
-
-    #[test]
-    fn fails_print_when_there_are_not_enough_parameters() {
-        let memory = [4];
-        let mut program = new_program!(&memory);
-        let result = program.run();
-        assert_eq!(
-            Err(Error::new(instruction::ErrorKind::NotEnoughParameters, 0)),
-            result
-        );
     }
 
     #[test]
