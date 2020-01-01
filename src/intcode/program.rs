@@ -49,6 +49,10 @@ where
                         instruction::jump_if(true, self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }
+                    Opcode::LessThan { param1, param2 } => {
+                        instruction::less_than(self, &[param1, param2])
+                            .address(self.instruction_pointer)?
+                    }
                     Opcode::Multiplication { param1, param2 } => {
                         instruction::multiply(self, &[param1, param2])
                             .address(self.instruction_pointer)?
@@ -334,6 +338,60 @@ mod tests {
         let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn less_than_is_true_when_1st_position_mode_param_is_less_than_2nd_position_mode_param() {
+        let memory = [7, 5, 6, 7, 99, 1, 2, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[7, 5, 6, 7, 99, 1, 2, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_false_when_1st_position_mode_param_is_not_less_than_2nd_position_mode_param() {
+        let memory = [7, 5, 6, 7, 99, 2, 2, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[7, 5, 6, 7, 99, 2, 2, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_true_when_1st_position_mode_param_is_less_than_2nd_immediate_mode_param() {
+        let memory = [1007, 5, 88, 6, 99, 1, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1007, 5, 88, 6, 99, 1, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_false_when_1st_position_mode_param_is_not_less_than_2nd_immediate_mode_param() {
+        let memory = [1007, 5, 88, 6, 99, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1007, 5, 88, 6, 99, 88, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_true_when_1st_immediate_mode_param_is_less_than_2nd_position_mode_param() {
+        let memory = [107, 88, 5, 6, 99, 100, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[107, 88, 5, 6, 99, 100, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_false_when_1st_immediate_mode_param_is_not_less_than_2nd_position_mode_param() {
+        let memory = [107, 88, 5, 6, 99, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[107, 88, 5, 6, 99, 88, 0], &program.memory[..]);
     }
 
     #[test]
