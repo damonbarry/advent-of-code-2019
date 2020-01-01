@@ -41,11 +41,11 @@ where
                             .address(self.instruction_pointer)?
                     }
                     Opcode::Halt => return Ok(()),
-                    Opcode::JumpIfFalse { param1, param2 } => {
+                    Opcode::JumpIf { cmp: false, param1, param2 } => {
                         instruction::jump_if(false, self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }
-                    Opcode::JumpIfTrue { param1, param2 } => {
+                    Opcode::JumpIf { cmp: true, param1, param2 } => {
                         instruction::jump_if(true, self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }

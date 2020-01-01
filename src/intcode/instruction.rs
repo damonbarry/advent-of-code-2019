@@ -11,11 +11,8 @@ pub enum Opcode {
         param2: ParameterMode,
     },
     Halt,
-    JumpIfFalse {
-        param1: ParameterMode,
-        param2: ParameterMode,
-    },
-    JumpIfTrue {
+    JumpIf {
+        cmp: bool,
         param1: ParameterMode,
         param2: ParameterMode,
     },
@@ -47,11 +44,13 @@ impl Opcode {
             4 => Ok(Opcode::Print {
                 param: Self::parse_parameter_mode(value, Self::FIRST)?,
             }),
-            5 => Ok(Opcode::JumpIfTrue {
+            5 => Ok(Opcode::JumpIf {
+                cmp: true,
                 param1: Self::parse_parameter_mode(value, Self::FIRST)?,
                 param2: Self::parse_parameter_mode(value, Self::SECOND)?,
             }),
-            6 => Ok(Opcode::JumpIfFalse {
+            6 => Ok(Opcode::JumpIf {
+                cmp: false,
                 param1: Self::parse_parameter_mode(value, Self::FIRST)?,
                 param2: Self::parse_parameter_mode(value, Self::SECOND)?,
             }),
