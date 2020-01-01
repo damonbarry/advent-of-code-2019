@@ -41,6 +41,10 @@ where
                             .address(self.instruction_pointer)?
                     }
                     Opcode::Halt => return Ok(()),
+                    Opcode::JumpIfTrue { param1, param2 } => {
+                        instruction::jump_if_true(self, &[param1, param2])
+                            .address(self.instruction_pointer)?
+                    }
                     Opcode::Multiplication { param1, param2 } => {
                         instruction::multiply(self, &[param1, param2])
                             .address(self.instruction_pointer)?
@@ -230,6 +234,54 @@ mod tests {
         let result = program.run();
         assert!(result.is_ok());
         assert_eq!(&[99, 100, -1, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn does_not_jump_when_first_position_parameter_value_is_zero() {
+        let memory = [5, 4, 5, 99, 0, 5555];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn does_not_jump_when_immediate_parameter_value_is_zero() {
+        let memory = [105, 0, 4, 99, 5555];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jumps_to_2nd_position_param_addr_when_1st_position_param_value_is_nonzero() {
+        let memory = [5, 5, 6, 5555, 99, 1, 4];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jumps_to_2nd_position_param_addr_when_1st_immediate_param_value_is_nonzero() {
+        let memory = [105, 1, 5, 5555, 99, 4];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jumps_to_2nd_immediate_param_addr_when_1st_position_param_value_is_nonzero() {
+        let memory = [1005, 5, 4, 5555, 99, 1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jumps_to_2nd_immediate_param_addr_when_1st_immediate_param_value_is_nonzero() {
+        let memory = [1005, 1, 4, 5555, 99];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
     }
 
     #[test]
