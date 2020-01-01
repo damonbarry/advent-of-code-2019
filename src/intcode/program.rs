@@ -42,11 +42,11 @@ where
                     }
                     Opcode::Halt => return Ok(()),
                     Opcode::JumpIfFalse { param1, param2 } => {
-                        instruction::jump_if_false(self, &[param1, param2])
+                        instruction::jump_if(false, self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }
                     Opcode::JumpIfTrue { param1, param2 } => {
-                        instruction::jump_if_true(self, &[param1, param2])
+                        instruction::jump_if(true, self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }
                     Opcode::Multiplication { param1, param2 } => {
