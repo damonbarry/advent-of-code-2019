@@ -11,6 +11,10 @@ pub enum Opcode {
         param2: ParameterMode,
     },
     Halt,
+    JumpIfFalse {
+        param1: ParameterMode,
+        param2: ParameterMode,
+    },
     JumpIfTrue {
         param1: ParameterMode,
         param2: ParameterMode,
@@ -44,6 +48,10 @@ impl Opcode {
                 param: Self::parse_parameter_mode(value, Self::FIRST)?,
             }),
             5 => Ok(Opcode::JumpIfTrue {
+                param1: Self::parse_parameter_mode(value, Self::FIRST)?,
+                param2: Self::parse_parameter_mode(value, Self::SECOND)?,
+            }),
+            6 => Ok(Opcode::JumpIfFalse {
                 param1: Self::parse_parameter_mode(value, Self::FIRST)?,
                 param2: Self::parse_parameter_mode(value, Self::SECOND)?,
             }),
@@ -162,6 +170,24 @@ pub fn add<T: super::program::System>(
     )?;
     system.write_memory(write_addrs[0], read_values[0] + read_values[1]);
     Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
+}
+
+pub fn jump_if_false<T: super::program::System>(
+    system: &mut T,
+    read_modes: &[ParameterMode],
+) -> Result<usize, ErrorKind> {
+    const INSTRUCTION_SIZE: usize = 3;
+    let (read_values, _) = process_parameters(
+        system,
+        &[ParameterType::Read, ParameterType::Read],
+        read_modes,
+    )?;
+
+    Ok(if read_values[0] == 0 {
+        read_values[1] as usize
+    } else {
+        system.read_instruction_pointer() + INSTRUCTION_SIZE
+    })
 }
 
 pub fn jump_if_true<T: super::program::System>(

@@ -41,6 +41,10 @@ where
                             .address(self.instruction_pointer)?
                     }
                     Opcode::Halt => return Ok(()),
+                    Opcode::JumpIfFalse { param1, param2 } => {
+                        instruction::jump_if_false(self, &[param1, param2])
+                            .address(self.instruction_pointer)?
+                    }
                     Opcode::JumpIfTrue { param1, param2 } => {
                         instruction::jump_if_true(self, &[param1, param2])
                             .address(self.instruction_pointer)?
@@ -237,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn does_not_jump_when_first_position_parameter_value_is_zero() {
+    fn jump_if_true_does_not_jump_when_position_mode_value_is_false() {
         let memory = [5, 4, 5, 99, 0, 5555];
         let mut program = new_program!(&memory);
         let result = program.run();
@@ -245,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn does_not_jump_when_immediate_parameter_value_is_zero() {
+    fn jump_if_true_does_not_jump_when_immediate_mode_value_is_false() {
         let memory = [105, 0, 4, 99, 5555];
         let mut program = new_program!(&memory);
         let result = program.run();
@@ -253,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    fn jumps_to_2nd_position_param_addr_when_1st_position_param_value_is_nonzero() {
+    fn jump_if_true_jumps_to_position_mode_addr_when_position_mode_value_is_true() {
         let memory = [5, 5, 6, 5555, 99, 1, 4];
         let mut program = new_program!(&memory);
         let result = program.run();
@@ -261,7 +265,7 @@ mod tests {
     }
 
     #[test]
-    fn jumps_to_2nd_position_param_addr_when_1st_immediate_param_value_is_nonzero() {
+    fn jump_if_true_jumps_to_position_mode_addr_when_immediate_mode_value_is_true() {
         let memory = [105, 1, 5, 5555, 99, 4];
         let mut program = new_program!(&memory);
         let result = program.run();
@@ -269,7 +273,7 @@ mod tests {
     }
 
     #[test]
-    fn jumps_to_2nd_immediate_param_addr_when_1st_position_param_value_is_nonzero() {
+    fn jump_if_true_jumps_to_immediate_mode_addr_when_position_mode_value_is_true() {
         let memory = [1005, 5, 4, 5555, 99, 1];
         let mut program = new_program!(&memory);
         let result = program.run();
@@ -277,8 +281,56 @@ mod tests {
     }
 
     #[test]
-    fn jumps_to_2nd_immediate_param_addr_when_1st_immediate_param_value_is_nonzero() {
-        let memory = [1005, 1, 4, 5555, 99];
+    fn jump_if_true_jumps_to_immediate_mode_addr_when_immediate_mode_value_is_true() {
+        let memory = [1105, -1, 4, 5555, 99];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_does_not_jump_when_position_mode_value_is_true() {
+        let memory = [6, 4, 5, 99, 1, 5555];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_does_not_jump_when_immediate_mode_value_is_true() {
+        let memory = [106, 1, 4, 99, 5555];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_jumps_to_position_mode_addr_when_position_mode_value_is_false() {
+        let memory = [6, 5, 6, 5555, 99, 0, 4];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_jumps_to_position_mode_addr_when_immediate_mode_value_is_false() {
+        let memory = [106, 0, 5, 5555, 99, 4];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_jumps_to_immediate_mode_addr_when_position_mode_value_is_false() {
+        let memory = [1006, 5, 4, 5555, 99, 0];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn jump_if_false_jumps_to_immediate_mode_addr_when_immediate_mode_value_is_false() {
+        let memory = [1106, 0, 4, 5555, 99];
         let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
