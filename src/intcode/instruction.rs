@@ -10,6 +10,10 @@ pub enum Opcode {
         param1: ParameterMode,
         param2: ParameterMode,
     },
+    Equals {
+        param1: ParameterMode,
+        param2: ParameterMode,
+    },
     Halt,
     JumpIf {
         cmp: bool,
@@ -59,6 +63,10 @@ impl Opcode {
                 param2: Self::parse_parameter_mode(value, Self::SECOND)?,
             }),
             7 => Ok(Opcode::LessThan {
+                param1: Self::parse_parameter_mode(value, Self::FIRST)?,
+                param2: Self::parse_parameter_mode(value, Self::SECOND)?,
+            }),
+            8 => Ok(Opcode::Equals {
                 param1: Self::parse_parameter_mode(value, Self::FIRST)?,
                 param2: Self::parse_parameter_mode(value, Self::SECOND)?,
             }),
@@ -179,6 +187,29 @@ pub fn add<T: super::program::System>(
     Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }
 
+pub fn equals<T: super::program::System>(
+    system: &mut T,
+    read_modes: &[ParameterMode],
+) -> Result<usize, ErrorKind> {
+    const INSTRUCTION_SIZE: usize = 4;
+    let (read_values, write_addrs) = process_parameters(
+        system,
+        &[
+            ParameterType::Read,
+            ParameterType::Read,
+            ParameterType::Write,
+        ],
+        read_modes,
+    )?;
+    let result: i64 = if read_values[0] == read_values[1] {
+        1
+    } else {
+        0
+    };
+    system.write_memory(write_addrs[0], result);
+    Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
+}
+
 pub fn jump_if<T: super::program::System>(
     cmp: bool,
     system: &mut T,
@@ -206,10 +237,18 @@ pub fn less_than<T: super::program::System>(
     const INSTRUCTION_SIZE: usize = 4;
     let (read_values, write_addrs) = process_parameters(
         system,
-        &[ParameterType::Read, ParameterType::Read, ParameterType::Write],
+        &[
+            ParameterType::Read,
+            ParameterType::Read,
+            ParameterType::Write,
+        ],
         read_modes,
     )?;
-    let result: i64 = if read_values[0] < read_values[1] { 1 } else { 0 };
+    let result: i64 = if read_values[0] < read_values[1] {
+        1
+    } else {
+        0
+    };
     system.write_memory(write_addrs[0], result);
     Ok(system.read_instruction_pointer() + INSTRUCTION_SIZE)
 }

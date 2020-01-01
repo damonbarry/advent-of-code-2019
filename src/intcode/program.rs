@@ -40,15 +40,22 @@ where
                         instruction::add(self, &[param1, param2])
                             .address(self.instruction_pointer)?
                     }
+                    Opcode::Equals { param1, param2 } => {
+                        instruction::equals(self, &[param1, param2])?
+                    }
                     Opcode::Halt => return Ok(()),
-                    Opcode::JumpIf { cmp: false, param1, param2 } => {
-                        instruction::jump_if(false, self, &[param1, param2])
-                            .address(self.instruction_pointer)?
-                    }
-                    Opcode::JumpIf { cmp: true, param1, param2 } => {
-                        instruction::jump_if(true, self, &[param1, param2])
-                            .address(self.instruction_pointer)?
-                    }
+                    Opcode::JumpIf {
+                        cmp: false,
+                        param1,
+                        param2,
+                    } => instruction::jump_if(false, self, &[param1, param2])
+                        .address(self.instruction_pointer)?,
+                    Opcode::JumpIf {
+                        cmp: true,
+                        param1,
+                        param2,
+                    } => instruction::jump_if(true, self, &[param1, param2])
+                        .address(self.instruction_pointer)?,
                     Opcode::LessThan { param1, param2 } => {
                         instruction::less_than(self, &[param1, param2])
                             .address(self.instruction_pointer)?
@@ -359,6 +366,24 @@ mod tests {
     }
 
     #[test]
+    fn less_than_is_true_when_1st_immediate_mode_param_is_less_than_2nd_position_mode_param() {
+        let memory = [107, 88, 5, 6, 99, 100, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[107, 88, 5, 6, 99, 100, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn less_than_is_false_when_1st_immediate_mode_param_is_not_less_than_2nd_position_mode_param() {
+        let memory = [107, 88, 5, 6, 99, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[107, 88, 5, 6, 99, 88, 0], &program.memory[..]);
+    }
+
+    #[test]
     fn less_than_is_true_when_1st_position_mode_param_is_less_than_2nd_immediate_mode_param() {
         let memory = [1007, 5, 88, 6, 99, 1, -1];
         let mut program = new_program!(&memory);
@@ -377,21 +402,94 @@ mod tests {
     }
 
     #[test]
-    fn less_than_is_true_when_1st_immediate_mode_param_is_less_than_2nd_position_mode_param() {
-        let memory = [107, 88, 5, 6, 99, 100, -1];
+    fn less_than_is_true_when_1st_immediate_mode_param_is_less_than_2nd_immediate_mode_param() {
+        let memory = [1107, 88, 100, 5, 99, -1];
         let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[107, 88, 5, 6, 99, 100, 1], &program.memory[..]);
+        assert_eq!(&[1107, 88, 100, 5, 99, 1], &program.memory[..]);
     }
 
     #[test]
-    fn less_than_is_false_when_1st_immediate_mode_param_is_not_less_than_2nd_position_mode_param() {
-        let memory = [107, 88, 5, 6, 99, 88, -1];
+    fn less_than_is_false_when_1st_immediate_mode_param_is_not_less_than_2nd_immediate_mode_param()
+    {
+        let memory = [1107, 88, 88, 5, 99, -1];
         let mut program = new_program!(&memory);
         let result = program.run();
         assert!(result.is_ok());
-        assert_eq!(&[107, 88, 5, 6, 99, 88, 0], &program.memory[..]);
+        assert_eq!(&[1107, 88, 88, 5, 99, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_true_when_position_mode_params_are_equal() {
+        let memory = [8, 5, 6, 7, 99, 88, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[8, 5, 6, 7, 99, 88, 88, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_false_when_position_mode_params_are_not_equal() {
+        let memory = [8, 5, 6, 7, 99, 88, 89, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[8, 5, 6, 7, 99, 88, 89, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_true_when_immediate_mode_param_is_equal_to_position_mode_param() {
+        let memory = [108, 88, 5, 6, 99, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[108, 88, 5, 6, 99, 88, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_false_when_immediate_mode_param_is_not_equal_to_position_mode_param() {
+        let memory = [108, 88, 5, 6, 99, 89, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[108, 88, 5, 6, 99, 89, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_true_when_position_mode_param_is_equal_to_immediate_mode_param() {
+        let memory = [1008, 5, 88, 6, 99, 88, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1008, 5, 88, 6, 99, 88, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_false_when_position_mode_param_is_not_equal_to_immediate_mode_param() {
+        let memory = [1008, 5, 88, 6, 99, 89, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1008, 5, 88, 6, 99, 89, 0], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_true_when_immediate_mode_params_are_equal() {
+        let memory = [1108, 88, 88, 5, 99, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1108, 88, 88, 5, 99, 1], &program.memory[..]);
+    }
+
+    #[test]
+    fn equals_is_false_when_immediate_mode_params_are_not_equal() {
+        let memory = [1108, 88, 89, 5, 99, -1];
+        let mut program = new_program!(&memory);
+        let result = program.run();
+        assert!(result.is_ok());
+        assert_eq!(&[1108, 88, 89, 5, 99, 0], &program.memory[..]);
     }
 
     #[test]
