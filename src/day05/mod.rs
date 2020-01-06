@@ -82,5 +82,4 @@ mod tests {
         assert!(left.iter().all(|i| *i == 0));
         assert_eq!(918655, *right.last().unwrap());
     }
-
 }
