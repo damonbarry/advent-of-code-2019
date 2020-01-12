@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests {
+    use petgraph::algo::astar;
     use petgraph::{
         graph::{Graph, NodeIndex},
         Direction,
+        Undirected,
     };
     use std::collections::HashMap;
 
@@ -67,12 +69,23 @@ mod tests {
             self.graph.edge_weight(edge).copied().ok_or(())
         }
 
-        fn find(object: &str, graph: &Graph<&str, u32>) -> Option<NodeIndex> {
+        fn find<D>(object: &str, graph: &Graph<&str, u32, D>) -> Option<NodeIndex>
+            where D: petgraph::EdgeType
+        {
             graph.node_indices().find(|i| graph[*i] == object)
         }
 
         pub fn count_all(&self) -> u32 {
             self.graph.edge_indices().map(|i| self.graph[i]).sum()
+        }
+
+        pub fn min_transfers(&self, from: &str, to: &str) -> Result<u32, ()> {
+            let undirected = self.graph.clone().into_edge_type::<Undirected>();
+            let start = Self::find(from, &undirected).ok_or(())?;
+            let end = Self::find(to, &undirected).ok_or(())?;
+            astar(&undirected, start, |node| node == end, |_| 1, |_| 0)
+                .ok_or(())
+                .map(|(cost, _)| cost - 2)
         }
     }
 
@@ -138,5 +151,47 @@ mod tests {
 
         let map = OrbitMap::with_orbits(&orbits[..]);
         assert_eq!(186597, map.count_all())
+    }
+
+    #[test]
+    fn test_part2_example1() {
+        //                           YOU
+        //                          /
+        //         G - H       J - K - L
+        //        /           /
+        // COM - B - C - D - E - F
+        //                \
+        //                 I - SAN
+        let map = OrbitMap::with_orbits(&[
+            ("COM", "B"),
+            ("B", "C"),
+            ("C", "D"),
+            ("D", "E"),
+            ("E", "F"),
+            ("B", "G"),
+            ("G", "H"),
+            ("D", "I"),
+            ("E", "J"),
+            ("J", "K"),
+            ("K", "L"),
+            ("K", "YOU"),
+            ("I", "SAN"),
+        ]);
+        assert_eq!(4, map.min_transfers("YOU", "SAN").unwrap());
+    }
+
+    #[test]
+    fn solve_day6_part2() {
+        let input = std::fs::read_to_string("src/day06/input.txt").unwrap();
+        let orbits: Vec<_> = input
+            .lines()
+            .map(|l| {
+                let objects: Vec<_> = l.split(')').collect();
+                (objects[0], objects[1])
+            })
+            .collect();
+
+        let map = OrbitMap::with_orbits(&orbits[..]);
+        assert_eq!(412, map.min_transfers("YOU", "SAN").unwrap());
     }
 }
